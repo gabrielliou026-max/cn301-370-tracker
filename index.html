@@ -1,0 +1,325 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>CN301-370 DC Demotion Progress Tracker</title>
+<style>
+  :root { color-scheme: light; }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: 'Segoe UI', Arial, sans-serif; background: #f0f4f8; color: #1a2332; }
+
+  header {
+    background: linear-gradient(135deg, #1a2f5e 0%, #2d4a8a 100%);
+    color: white;
+    padding: 18px 28px;
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.25);
+  }
+  header .title-block h1 { font-size: 1.15rem; font-weight: 700; letter-spacing: 0.5px; }
+  header .title-block h1 span.en { font-size: 0.8rem; font-weight: 400; opacity: 0.8; margin-left: 8px; }
+  header .title-block p { font-size: 0.78rem; opacity: 0.75; margin-top: 3px; }
+  header .badge {
+    margin-left: auto;
+    background: rgba(255,255,255,0.15);
+    border: 1px solid rgba(255,255,255,0.3);
+    border-radius: 20px;
+    padding: 6px 14px;
+    font-size: 0.8rem;
+    white-space: nowrap;
+  }
+
+  .summary-bar {
+    display: flex;
+    gap: 14px;
+    padding: 16px 28px;
+    background: white;
+    border-bottom: 1px solid #dde3ed;
+    flex-wrap: wrap;
+  }
+  .stat-card {
+    flex: 1;
+    min-width: 110px;
+    background: #f8fafc;
+    border-radius: 10px;
+    border: 1px solid #e2e8f0;
+    padding: 12px 16px;
+    text-align: center;
+  }
+  .stat-card .num { font-size: 1.8rem; font-weight: 800; line-height: 1; }
+  .stat-card .lbl { font-size: 0.7rem; color: #64748b; margin-top: 4px; letter-spacing: 0.3px; line-height: 1.4; }
+  .stat-card.total .num { color: #1a2f5e; }
+  .stat-card.done .num { color: #16a34a; }
+  .stat-card.wip .num { color: #d97706; }
+  .stat-card.pending .num { color: #94a3b8; }
+  .stat-card.rate .num { font-size: 1.4rem; color: #2d4a8a; }
+
+  .progress-wrap {
+    padding: 0 28px 14px;
+    background: white;
+    border-bottom: 1px solid #dde3ed;
+  }
+  .progress-track {
+    height: 10px;
+    background: #e2e8f0;
+    border-radius: 6px;
+    overflow: hidden;
+    margin-top: 2px;
+  }
+  .progress-fill {
+    height: 100%;
+    background: linear-gradient(90deg, #16a34a, #22c55e);
+    border-radius: 6px;
+    transition: width 0.5s ease;
+  }
+  .progress-label { font-size: 0.75rem; color: #64748b; margin-bottom: 4px; }
+
+  .updated-info {
+    padding: 8px 28px;
+    background: #fffbeb;
+    border-bottom: 1px solid #fde68a;
+    font-size: 0.78rem;
+    color: #92400e;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+  }
+
+  .table-wrap { padding: 20px 28px; overflow-x: auto; }
+  table {
+    width: 100%;
+    border-collapse: collapse;
+    background: white;
+    border-radius: 12px;
+    overflow: hidden;
+    box-shadow: 0 1px 6px rgba(0,0,0,0.08);
+    font-size: 0.85rem;
+  }
+  thead { background: #1a2f5e; color: white; }
+  thead th {
+    padding: 12px 14px;
+    text-align: left;
+    font-weight: 600;
+    font-size: 0.78rem;
+    letter-spacing: 0.4px;
+    white-space: nowrap;
+  }
+  tbody tr { border-bottom: 1px solid #f1f5f9; transition: background 0.15s; }
+  tbody tr:last-child { border-bottom: none; }
+  tbody tr:hover { background: #f8fafc; }
+  tbody td { padding: 9px 14px; vertical-align: middle; }
+
+  td.car-no { font-weight: 700; color: #1a2f5e; font-size: 0.88rem; font-family: monospace; }
+
+  .badge-status {
+    display: inline-block;
+    padding: 3px 10px;
+    border-radius: 20px;
+    font-size: 0.75rem;
+    font-weight: 600;
+    white-space: nowrap;
+  }
+  .s-complete { background: #dcfce7; color: #166534; }
+  .s-wip      { background: #fef3c7; color: #92400e; }
+  .s-pending  { background: #f1f5f9; color: #64748b; }
+
+  td.note { color: #64748b; font-size: 0.8rem; max-width: 200px; }
+  td.date { white-space: nowrap; font-size: 0.82rem; }
+  td.after-status { font-size: 0.82rem; }
+  td.person { font-size: 0.82rem; }
+
+  .legend {
+    display: flex;
+    gap: 16px;
+    padding: 0 28px 20px;
+    flex-wrap: wrap;
+  }
+  .legend-item { display: flex; align-items: center; gap: 6px; font-size: 0.78rem; color: #64748b; }
+  .legend-dot { width: 10px; height: 10px; border-radius: 50%; }
+  .ld-done { background: #16a34a; }
+  .ld-wip  { background: #d97706; }
+  .ld-pend { background: #cbd5e1; }
+
+  footer {
+    text-align: center;
+    padding: 14px;
+    font-size: 0.72rem;
+    color: #94a3b8;
+    border-top: 1px solid #e2e8f0;
+    background: white;
+  }
+</style>
+</head>
+<body>
+
+<header>
+  <div style="font-size:2rem;">🚃</div>
+  <div class="title-block">
+    <h1>CN301-370 DC降級作業進度追蹤 <span class="en">DC Demotion Progress Tracker</span></h1>
+    <p>作業單位 Unit：Communications Maintenance　｜　目標 Target：70 units</p>
+  </div>
+  <div class="badge" id="headerDate">載入中…</div>
+</header>
+
+<div class="summary-bar">
+  <div class="stat-card total"><div class="num" id="statTotal">70</div><div class="lbl">總台數<br>Total</div></div>
+  <div class="stat-card done"><div class="num" id="statDone">0</div><div class="lbl">已完成<br>Completed</div></div>
+  <div class="stat-card wip"><div class="num" id="statWip">0</div><div class="lbl">進行中<br>In Progress</div></div>
+  <div class="stat-card pending"><div class="num" id="statPending">70</div><div class="lbl">待作業<br>Pending</div></div>
+  <div class="stat-card rate"><div class="num" id="statRate">0%</div><div class="lbl">完成率<br>Completion</div></div>
+</div>
+
+<div class="progress-wrap">
+  <div class="progress-label" id="progressLabel">完成進度：0 / 50 台</div>
+  <div class="progress-track"><div class="progress-fill" id="progressFill" style="width:0%"></div></div>
+</div>
+
+<div class="updated-info" id="updatedInfo">
+  ⚠️ 尚未有進度更新，請通知作業人員回報今日進度。
+</div>
+
+<div class="table-wrap">
+  <table>
+    <thead>
+      <tr>
+        <th>#</th>
+        <th>車號<br><span style="font-weight:400;opacity:0.7;font-size:0.7rem;">Car No.</span></th>
+        <th>DC降級進度<br><span style="font-weight:400;opacity:0.7;font-size:0.7rem;">DC Demotion</span></th>
+        <th>完成日期<br><span style="font-weight:400;opacity:0.7;font-size:0.7rem;">Date</span></th>
+        <th>負責人員<br><span style="font-weight:400;opacity:0.7;font-size:0.7rem;">Technician</span></th>
+        <th>降級後狀態<br><span style="font-weight:400;opacity:0.7;font-size:0.7rem;">Post-Demotion</span></th>
+        <th>註記<br><span style="font-weight:400;opacity:0.7;font-size:0.7rem;">Notes</span></th>
+      </tr>
+    </thead>
+    <tbody id="tableBody"></tbody>
+  </table>
+</div>
+
+<div class="legend">
+  <div class="legend-item"><div class="legend-dot ld-done"></div>已完成 Completed</div>
+  <div class="legend-item"><div class="legend-dot ld-wip"></div>進行中 In Progress</div>
+  <div class="legend-item"><div class="legend-dot ld-pend"></div>待作業 Pending</div>
+</div>
+
+<footer>CN301-370 DC Demotion Tracking System　｜　DC降級作業追蹤系統　｜　Last Updated 最後更新：<span id="footerUpdated">-</span></footer>
+
+<script>
+// ===== 進度資料區（每次更新只需修改此處） =====
+const LAST_UPDATED = "2026-05-23"; // v2
+const DATA = [
+  // ── 已完成 Completed ──
+  { car: "CN302", status: "完成", date: "2026-05-23", person: "Mark", afterStatus: "—", note: "操課用車 Training Vehicle（專長丁 Specialist-D）" },
+  { car: "CN307", status: "完成", date: "2026-05-23", person: "Mark", afterStatus: "—", note: "操課用車 Training Vehicle（專長己 Specialist-F）" },
+  { car: "CN321", status: "完成", date: "2026-05-23", person: "Mark", afterStatus: "—", note: "" },
+  { car: "CN323", status: "完成", date: "2026-05-23", person: "Mark", afterStatus: "—", note: "" },
+  { car: "CN337", status: "完成", date: "2026-05-23", person: "Mark", afterStatus: "—", note: "操課用車 Training Vehicle（專長甲 Specialist-A）" },
+  { car: "CN339", status: "完成", date: "2026-05-23", person: "Mark", afterStatus: "—", note: "操課用車 Training Vehicle（專長戊 Specialist-E）" },
+  { car: "CN340", status: "完成", date: "2026-05-23", person: "Mark", afterStatus: "—", note: "操課用車 Training Vehicle（專長戊 Specialist-E）" },
+  { car: "CN341", status: "完成", date: "2026-05-23", person: "Mark", afterStatus: "—", note: "操課用車 Training Vehicle（進階乙 Advanced-B）" },
+  { car: "CN343", status: "完成", date: "2026-05-23", person: "Mark", afterStatus: "—", note: "操課用車 Training Vehicle（專長丙 Specialist-C）" },
+  { car: "CN345", status: "完成", date: "2026-05-23", person: "Mark", afterStatus: "—", note: "操課用車 Training Vehicle（專長丁 Specialist-D）" },
+  { car: "CN348", status: "完成", date: "2026-05-23", person: "Mark", afterStatus: "—", note: "操課用車 Training Vehicle（進階乙 Advanced-B）" },
+  { car: "CN353", status: "完成", date: "2026-05-23", person: "Mark", afterStatus: "—", note: "" },
+  { car: "CN356", status: "完成", date: "2026-05-23", person: "Mark", afterStatus: "—", note: "" },
+  { car: "CN357", status: "完成", date: "2026-05-23", person: "Mark", afterStatus: "—", note: "" },
+  { car: "CN358", status: "完成", date: "2026-05-23", person: "Mark", afterStatus: "—", note: "" },
+  { car: "CN360", status: "完成", date: "2026-05-23", person: "Mark", afterStatus: "—", note: "" },
+  { car: "CN362", status: "完成", date: "2026-05-23", person: "Mark", afterStatus: "—", note: "" },
+  { car: "CN367", status: "完成", date: "2026-05-23", person: "Mark", afterStatus: "—", note: "" },
+  { car: "CN370", status: "完成", date: "2026-05-23", person: "Mark", afterStatus: "—", note: "" },
+  // ── 操課用車（待作業）Training Vehicles ──
+  { car: "CN304", status: "待作業", date: "—", person: "—", afterStatus: "—", note: "操課用車 Training Vehicle（專長乙 Specialist-B）" },
+  { car: "CN311", status: "待作業", date: "—", person: "—", afterStatus: "—", note: "操課用車 Training Vehicle（進階甲 Advanced-A）" },
+  { car: "CN312", status: "待作業", date: "—", person: "—", afterStatus: "—", note: "操課用車 Training Vehicle（專長甲 Specialist-A）" },
+  { car: "CN313", status: "待作業", date: "—", person: "—", afterStatus: "—", note: "操課用車 Training Vehicle（專長戊 Specialist-E）" },
+  { car: "CN322", status: "待作業", date: "—", person: "—", afterStatus: "—", note: "操課用車 Training Vehicle（專長己 Specialist-F）" },
+  { car: "CN324", status: "待作業", date: "—", person: "—", afterStatus: "—", note: "操課用車 Training Vehicle（專長甲 Specialist-A）" },
+  { car: "CN325", status: "待作業", date: "—", person: "—", afterStatus: "—", note: "操課用車 Training Vehicle（專長己 Specialist-F）" },
+  { car: "CN326", status: "待作業", date: "—", person: "—", afterStatus: "—", note: "操課用車 Training Vehicle（專長丙 Specialist-C）" },
+  { car: "CN327", status: "待作業", date: "—", person: "—", afterStatus: "—", note: "操課用車 Training Vehicle（專長乙 Specialist-B）" },
+  { car: "CN328", status: "待作業", date: "—", person: "—", afterStatus: "—", note: "操課用車 Training Vehicle（專長甲 Specialist-A）" },
+  { car: "CN329", status: "待作業", date: "—", person: "—", afterStatus: "—", note: "操課用車 Training Vehicle（進階甲 Advanced-A）" },
+  { car: "CN330", status: "待作業", date: "—", person: "—", afterStatus: "—", note: "操課用車 Training Vehicle（進階甲 Advanced-A）" },
+  { car: "CN331", status: "待作業", date: "—", person: "—", afterStatus: "—", note: "操課用車 Training Vehicle（進階乙 Advanced-B）" },
+  { car: "CN336", status: "待作業", date: "—", person: "—", afterStatus: "—", note: "操課用車 Training Vehicle（專長己 Specialist-F）" },
+  { car: "CN338", status: "待作業", date: "—", person: "—", afterStatus: "—", note: "操課用車 Training Vehicle（專長乙 Specialist-B）" },
+  { car: "CN342", status: "待作業", date: "—", person: "—", afterStatus: "—", note: "操課用車 Training Vehicle（進階甲 Advanced-A）" },
+  { car: "CN344", status: "待作業", date: "—", person: "—", afterStatus: "—", note: "操課用車 Training Vehicle（專長丙 Specialist-C）" },
+  { car: "CN347", status: "待作業", date: "—", person: "—", afterStatus: "—", note: "操課用車 Training Vehicle（專長丙 Specialist-C）" },
+  { car: "CN354", status: "待作業", date: "—", person: "—", afterStatus: "—", note: "操課用車 Training Vehicle（進階乙 Advanced-B）" },
+  { car: "CN361", status: "待作業", date: "—", person: "—", afterStatus: "—", note: "操課用車 Training Vehicle（專長丁 Specialist-D）" },
+  { car: "CN363", status: "待作業", date: "—", person: "—", afterStatus: "—", note: "操課用車 Training Vehicle（專長丁 Specialist-D）" },
+  { car: "CN364", status: "待作業", date: "—", person: "—", afterStatus: "—", note: "操課用車 Training Vehicle（專長戊 Specialist-E）" },
+];
+// ==============================================
+
+const TOTAL = 70;
+const cars = Array.from({length: TOTAL}, (_, i) => `CN${301 + i}`);
+
+function getRecord(car) {
+  return DATA.find(d => d.car === car) || null;
+}
+
+function statusBadge(status) {
+  if (!status || status === "待作業") return `<span class="badge-status s-pending">待作業 Pending</span>`;
+  if (status === "進行中") return `<span class="badge-status s-wip">進行中 In Progress</span>`;
+  if (status === "完成")   return `<span class="badge-status s-complete">✓ 完成 Done</span>`;
+  return `<span class="badge-status s-pending">${status}</span>`;
+}
+
+function render() {
+  const tbody = document.getElementById("tableBody");
+  let doneCount = 0, wipCount = 0;
+
+  tbody.innerHTML = cars.map((car, idx) => {
+    const r = getRecord(car);
+    const st  = r?.status     || "待作業";
+    const dt  = r?.date       || "—";
+    const per = r?.person     || "—";
+    const aft = r?.afterStatus|| "—";
+    const nt  = r?.note       || "";
+    if (st === "完成")   doneCount++;
+    if (st === "進行中") wipCount++;
+
+    const rowBg = st === "完成" ? "background:#f0fdf4;" : st === "進行中" ? "background:#fffbeb;" : "";
+    return `<tr style="${rowBg}">
+      <td style="color:#94a3b8;font-size:0.75rem;">${idx+1}</td>
+      <td class="car-no">${car}</td>
+      <td>${statusBadge(st)}</td>
+      <td class="date">${dt}</td>
+      <td class="person">${per}</td>
+      <td class="after-status">${aft}</td>
+      <td class="note">${nt}</td>
+    </tr>`;
+  }).join("");
+
+  const pendingCount = TOTAL - doneCount - wipCount;
+  const rate = Math.round((doneCount / TOTAL) * 100);
+
+  document.getElementById("statDone").textContent    = doneCount;
+  document.getElementById("statWip").textContent     = wipCount;
+  document.getElementById("statPending").textContent = pendingCount;
+  document.getElementById("statRate").textContent    = rate + "%";
+  document.getElementById("progressFill").style.width = rate + "%";
+  document.getElementById("progressLabel").textContent = `完成進度 Progress：${doneCount} / ${TOTAL} units`;
+
+  const now = new Date();
+  const dateStr = `${now.getFullYear()}-${String(now.getMonth()+1).padStart(2,'0')}-${String(now.getDate()).padStart(2,'0')}`;
+  document.getElementById("headerDate").textContent = `📅 ${dateStr}`;
+  document.getElementById("footerUpdated").textContent = LAST_UPDATED || "尚未更新";
+
+  const infoEl = document.getElementById("updatedInfo");
+  if (LAST_UPDATED) {
+    infoEl.style.background = "#f0fdf4";
+    infoEl.style.borderColor = "#86efac";
+    infoEl.style.color = "#166534";
+    infoEl.textContent = `✅ Last Updated 最後更新：${LAST_UPDATED}　｜　${doneCount} units completed (${rate}%) 已完成`;
+  }
+}
+
+render();
+</script>
+</body>
+</html>
