@@ -158,7 +158,7 @@
   <div style="font-size:2rem;">🚃</div>
   <div class="title-block">
     <h1>CN301-370 DC降級作業進度追蹤 <span class="en">DC Demotion Progress Tracker</span></h1>
-    <p>作業單位 Unit：Communications Maintenance　｜　目標 Target：70 units</p>
+    <p>作業單位 Unit：Communications Maintenance　｜　目標 Target：54 units</p>
   </div>
   <div class="badge" id="headerDate">載入中…</div>
 </header>
@@ -227,7 +227,6 @@ const DATA = [
   { car: "CN358", status: "完成", date: "2026-05-23", person: "Mark", afterStatus: "—", note: "" },
   { car: "CN360", status: "完成", date: "2026-05-23", person: "Mark", afterStatus: "—", note: "" },
   { car: "CN362", status: "完成", date: "2026-05-23", person: "Mark", afterStatus: "—", note: "" },
-  { car: "CN367", status: "完成", date: "2026-05-23", person: "Mark", afterStatus: "—", note: "" },
   { car: "CN370", status: "完成", date: "2026-05-23", person: "Mark", afterStatus: "—", note: "" },
   // ── 操課用車（待作業）Training Vehicles ──
   { car: "CN304", status: "進行中", date: "—", person: "Mark", afterStatus: "—", note: "操課用車 Training Vehicle（專長乙 Specialist-B）" },
@@ -255,8 +254,9 @@ const DATA = [
 ];
 // ==============================================
 
-const TOTAL = 70;
-const cars = Array.from({length: TOTAL}, (_, i) => `CN${301 + i}`);
+const EXCLUDED = new Set(["CN315","CN316","CN317","CN318","CN332","CN333","CN334","CN335","CN349","CN350","CN351","CN352","CN365","CN366","CN367","CN368"]);
+const TOTAL = 54;
+const cars = Array.from({length: 70}, (_, i) => `CN${301 + i}`).filter(c => !EXCLUDED.has(c));
 
 function getRecord(car) {
   return DATA.find(d => d.car === car) || null;
