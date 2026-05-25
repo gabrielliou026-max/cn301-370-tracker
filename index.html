@@ -191,7 +191,8 @@
         <th>車號<br><span style="font-weight:400;opacity:0.7;font-size:0.7rem;">Car No.</span></th>
         <th>DC降級進度<br><span style="font-weight:400;opacity:0.7;font-size:0.7rem;">DC Demotion</span></th>
         <th>DT&amp;E檢查<br><span style="font-weight:400;opacity:0.7;font-size:0.7rem;">DT&amp;E Check</span></th>
-        <th>完成日期<br><span style="font-weight:400;opacity:0.7;font-size:0.7rem;">Date</span></th>
+        <th>作業日期<br><span style="font-weight:400;opacity:0.7;font-size:0.7rem;">Scheduled Date</span></th>
+        <th>完成日期<br><span style="font-weight:400;opacity:0.7;font-size:0.7rem;">Completion Date</span></th>
         <th>負責人員<br><span style="font-weight:400;opacity:0.7;font-size:0.7rem;">Technician</span></th>
         <th>降級後狀態<br><span style="font-weight:400;opacity:0.7;font-size:0.7rem;">Post-Demotion</span></th>
         <th>註記<br><span style="font-weight:400;opacity:0.7;font-size:0.7rem;">Notes</span></th>
@@ -212,50 +213,51 @@
 
 <script>
 // ===== 進度資料區（每次更新只需修改此處） =====
-const LAST_UPDATED = "2026-05-23"; // v3
+const LAST_UPDATED = "2026-05-25"; // v4
 const DATA = [
   // ── 已完成 Completed ──
-  { car: "CN302", status: "完成", dte: "待查", date: "2026-05-23", person: "Mark", afterStatus: "—", note: "操課用車 Training Vehicle（專長丁 Specialist-D）" },
-  { car: "CN307", status: "完成", dte: "待查", date: "2026-05-23", person: "Mark", afterStatus: "—", note: "操課用車 Training Vehicle（專長己 Specialist-F）" },
-  { car: "CN321", status: "完成", dte: "待查", date: "2026-05-23", person: "Mark", afterStatus: "—", note: "" },
-  { car: "CN323", status: "完成", dte: "待查", date: "2026-05-23", person: "Mark", afterStatus: "—", note: "" },
-  { car: "CN337", status: "完成", dte: "待查", date: "2026-05-23", person: "Mark", afterStatus: "—", note: "操課用車 Training Vehicle（專長甲 Specialist-A）" },
-  { car: "CN339", status: "完成", dte: "待查", date: "2026-05-23", person: "Mark", afterStatus: "—", note: "操課用車 Training Vehicle（專長戊 Specialist-E）" },
-  { car: "CN340", status: "完成", dte: "待查", date: "2026-05-23", person: "Mark", afterStatus: "—", note: "操課用車 Training Vehicle（專長戊 Specialist-E）" },
-  { car: "CN341", status: "完成", dte: "待查", date: "2026-05-23", person: "Mark", afterStatus: "—", note: "操課用車 Training Vehicle（進階乙 Advanced-B）" },
-  { car: "CN343", status: "完成", dte: "待查", date: "2026-05-23", person: "Mark", afterStatus: "—", note: "操課用車 Training Vehicle（專長丙 Specialist-C）" },
-  { car: "CN345", status: "完成", dte: "待查", date: "2026-05-23", person: "Mark", afterStatus: "—", note: "操課用車 Training Vehicle（專長丁 Specialist-D）" },
-  { car: "CN348", status: "完成", dte: "待查", date: "2026-05-23", person: "Mark", afterStatus: "—", note: "操課用車 Training Vehicle（進階乙 Advanced-B）" },
-  { car: "CN353", status: "完成", dte: "待查", date: "2026-05-23", person: "Mark", afterStatus: "—", note: "" },
-  { car: "CN356", status: "完成", dte: "待查", date: "2026-05-23", person: "Mark", afterStatus: "—", note: "" },
-  { car: "CN357", status: "完成", dte: "待查", date: "2026-05-23", person: "Mark", afterStatus: "—", note: "" },
-  { car: "CN358", status: "完成", dte: "待查", date: "2026-05-23", person: "Mark", afterStatus: "—", note: "" },
-  { car: "CN360", status: "完成", dte: "待查", date: "2026-05-23", person: "Mark", afterStatus: "—", note: "" },
-  { car: "CN362", status: "完成", dte: "待查", date: "2026-05-23", person: "Mark", afterStatus: "—", note: "" },
-  { car: "CN370", status: "完成", dte: "待查", date: "2026-05-23", person: "Mark", afterStatus: "—", note: "" },
-  // ── 操課用車（待作業）Training Vehicles ──
-  { car: "CN304", status: "進行中", dte: "—", date: "—", person: "Mark", afterStatus: "—", note: "操課用車 Training Vehicle（專長乙 Specialist-B）" },
-  { car: "CN311", status: "待作業", dte: "—", date: "—", person: "—", afterStatus: "—", note: "操課用車 Training Vehicle（進階甲 Advanced-A）" },
-  { car: "CN312", status: "進行中", dte: "—", date: "—", person: "—", afterStatus: "—", note: "操課用車 Training Vehicle（專長甲 Specialist-A）" },
-  { car: "CN313", status: "待作業", dte: "—", date: "—", person: "—", afterStatus: "—", note: "操課用車 Training Vehicle（專長戊 Specialist-E）" },
-  { car: "CN322", status: "待作業", dte: "—", date: "—", person: "—", afterStatus: "—", note: "操課用車 Training Vehicle（專長己 Specialist-F）" },
-  { car: "CN324", status: "待作業", dte: "—", date: "—", person: "—", afterStatus: "—", note: "操課用車 Training Vehicle（專長甲 Specialist-A）" },
-  { car: "CN325", status: "待作業", dte: "—", date: "—", person: "—", afterStatus: "—", note: "操課用車 Training Vehicle（專長己 Specialist-F）" },
-  { car: "CN326", status: "待作業", dte: "—", date: "—", person: "—", afterStatus: "—", note: "操課用車 Training Vehicle（專長丙 Specialist-C）" },
-  { car: "CN327", status: "待作業", dte: "—", date: "—", person: "—", afterStatus: "—", note: "操課用車 Training Vehicle（專長乙 Specialist-B）" },
-  { car: "CN328", status: "待作業", dte: "—", date: "—", person: "—", afterStatus: "—", note: "操課用車 Training Vehicle（專長甲 Specialist-A）" },
-  { car: "CN329", status: "待作業", dte: "—", date: "—", person: "—", afterStatus: "—", note: "操課用車 Training Vehicle（進階甲 Advanced-A）" },
-  { car: "CN330", status: "待作業", dte: "—", date: "—", person: "—", afterStatus: "—", note: "操課用車 Training Vehicle（進階甲 Advanced-A）" },
-  { car: "CN331", status: "待作業", dte: "—", date: "—", person: "—", afterStatus: "—", note: "操課用車 Training Vehicle（進階乙 Advanced-B）" },
-  { car: "CN336", status: "進行中", dte: "—", date: "—", person: "Mark", afterStatus: "—", note: "操課用車 Training Vehicle（專長己 Specialist-F）" },
-  { car: "CN338", status: "進行中", dte: "—", date: "—", person: "—", afterStatus: "—", note: "操課用車 Training Vehicle（專長乙 Specialist-B）" },
-  { car: "CN342", status: "進行中", dte: "—", date: "—", person: "—", afterStatus: "—", note: "操課用車 Training Vehicle（進階甲 Advanced-A）" },
-  { car: "CN344", status: "進行中", dte: "—", date: "—", person: "—", afterStatus: "—", note: "操課用車 Training Vehicle（專長丙 Specialist-C）" },
-  { car: "CN347", status: "待作業", dte: "—", date: "—", person: "—", afterStatus: "—", note: "操課用車 Training Vehicle（專長丙 Specialist-C）" },
-  { car: "CN354", status: "待作業", dte: "—", date: "—", person: "—", afterStatus: "—", note: "操課用車 Training Vehicle（進階乙 Advanced-B）" },
-  { car: "CN361", status: "待作業", dte: "—", date: "—", person: "—", afterStatus: "—", note: "操課用車 Training Vehicle（專長丁 Specialist-D）" },
-  { car: "CN363", status: "待作業", dte: "—", date: "—", person: "—", afterStatus: "—", note: "操課用車 Training Vehicle（專長丁 Specialist-D）" },
-  { car: "CN364", status: "待作業", dte: "—", date: "—", person: "—", afterStatus: "—", note: "操課用車 Training Vehicle（專長戊 Specialist-E）" },
+  { car: "CN302", status: "完成", dte: "待查", date: "2026-05-23", scheduledDate: "—", person: "Mark", afterStatus: "—", note: "操課用車 Training Vehicle（專長丁 Specialist-D）" },
+  { car: "CN307", status: "完成", dte: "待查", date: "2026-05-23", scheduledDate: "—", person: "Mark", afterStatus: "—", note: "操課用車 Training Vehicle（專長己 Specialist-F）" },
+  { car: "CN321", status: "完成", dte: "待查", date: "2026-05-23", scheduledDate: "—", person: "Mark", afterStatus: "—", note: "" },
+  { car: "CN323", status: "完成", dte: "待查", date: "2026-05-23", scheduledDate: "—", person: "Mark", afterStatus: "—", note: "" },
+  { car: "CN337", status: "完成", dte: "待查", date: "2026-05-23", scheduledDate: "—", person: "Mark", afterStatus: "—", note: "操課用車 Training Vehicle（專長甲 Specialist-A）" },
+  { car: "CN339", status: "完成", dte: "待查", date: "2026-05-23", scheduledDate: "—", person: "Mark", afterStatus: "—", note: "操課用車 Training Vehicle（專長戊 Specialist-E）" },
+  { car: "CN340", status: "完成", dte: "待查", date: "2026-05-23", scheduledDate: "—", person: "Mark", afterStatus: "—", note: "操課用車 Training Vehicle（專長戊 Specialist-E）" },
+  { car: "CN345", status: "完成", dte: "待查", date: "2026-05-23", scheduledDate: "—", person: "Mark", afterStatus: "—", note: "操課用車 Training Vehicle（專長丁 Specialist-D）" },
+  { car: "CN348", status: "完成", dte: "待查", date: "2026-05-23", scheduledDate: "—", person: "Mark", afterStatus: "—", note: "操課用車 Training Vehicle（進階乙 Advanced-B）" },
+  { car: "CN353", status: "完成", dte: "待查", date: "2026-05-23", scheduledDate: "—", person: "Mark", afterStatus: "—", note: "" },
+  { car: "CN356", status: "完成", dte: "待查", date: "2026-05-23", scheduledDate: "—", person: "Mark", afterStatus: "—", note: "" },
+  { car: "CN357", status: "完成", dte: "待查", date: "2026-05-23", scheduledDate: "—", person: "Mark", afterStatus: "—", note: "" },
+  { car: "CN358", status: "完成", dte: "待查", date: "2026-05-23", scheduledDate: "—", person: "Mark", afterStatus: "—", note: "" },
+  { car: "CN360", status: "完成", dte: "待查", date: "2026-05-23", scheduledDate: "—", person: "Mark", afterStatus: "—", note: "" },
+  { car: "CN362", status: "完成", dte: "待查", date: "2026-05-23", scheduledDate: "—", person: "Mark", afterStatus: "—", note: "" },
+  { car: "CN370", status: "完成", dte: "待查", date: "2026-05-23", scheduledDate: "—", person: "Mark", afterStatus: "—", note: "" },
+  // ── 進行中 In Progress ──
+  { car: "CN304", status: "進行中", dte: "—", date: "—", scheduledDate: "2026-05-26", person: "Mark", afterStatus: "—", note: "操課用車 Training Vehicle（專長乙 Specialist-B）" },
+  { car: "CN312", status: "進行中", dte: "—", date: "—", scheduledDate: "2026-05-26", person: "—", afterStatus: "—", note: "操課用車 Training Vehicle（專長甲 Specialist-A）" },
+  { car: "CN336", status: "進行中", dte: "—", date: "—", scheduledDate: "2026-05-26", person: "Mark", afterStatus: "—", note: "操課用車 Training Vehicle（專長己 Specialist-F）" },
+  { car: "CN341", status: "完成", dte: "待查", date: "2026-05-23", scheduledDate: "—", person: "Mark", afterStatus: "—", note: "操課用車 Training Vehicle（進階乙 Advanced-B）" },
+  { car: "CN342", status: "進行中", dte: "—", date: "—", scheduledDate: "2026-05-26", person: "—", afterStatus: "—", note: "操課用車 Training Vehicle（進階甲 Advanced-A）" },
+  { car: "CN343", status: "完成", dte: "待查", date: "2026-05-23", scheduledDate: "—", person: "Mark", afterStatus: "—", note: "操課用車 Training Vehicle（專長丙 Specialist-C）" },
+  { car: "CN344", status: "進行中", dte: "—", date: "—", scheduledDate: "2026-05-26", person: "—", afterStatus: "—", note: "操課用車 Training Vehicle（專長丙 Specialist-C）" },
+  { car: "CN338", status: "進行中", dte: "—", date: "—", scheduledDate: "—", person: "—", afterStatus: "—", note: "操課用車 Training Vehicle（專長乙 Specialist-B）" },
+  // ── 待作業 Pending ──
+  { car: "CN311", status: "待作業", dte: "—", date: "—", scheduledDate: "—", person: "—", afterStatus: "—", note: "操課用車 Training Vehicle（進階甲 Advanced-A）" },
+  { car: "CN313", status: "待作業", dte: "—", date: "—", scheduledDate: "—", person: "—", afterStatus: "—", note: "操課用車 Training Vehicle（專長戊 Specialist-E）" },
+  { car: "CN322", status: "待作業", dte: "—", date: "—", scheduledDate: "—", person: "—", afterStatus: "—", note: "操課用車 Training Vehicle（專長己 Specialist-F）" },
+  { car: "CN324", status: "待作業", dte: "—", date: "—", scheduledDate: "—", person: "—", afterStatus: "—", note: "操課用車 Training Vehicle（專長甲 Specialist-A）" },
+  { car: "CN325", status: "待作業", dte: "—", date: "—", scheduledDate: "—", person: "—", afterStatus: "—", note: "操課用車 Training Vehicle（專長己 Specialist-F）" },
+  { car: "CN326", status: "待作業", dte: "—", date: "—", scheduledDate: "—", person: "—", afterStatus: "—", note: "操課用車 Training Vehicle（專長丙 Specialist-C）" },
+  { car: "CN327", status: "待作業", dte: "—", date: "—", scheduledDate: "—", person: "—", afterStatus: "—", note: "操課用車 Training Vehicle（專長乙 Specialist-B）" },
+  { car: "CN328", status: "待作業", dte: "—", date: "—", scheduledDate: "—", person: "—", afterStatus: "—", note: "操課用車 Training Vehicle（專長甲 Specialist-A）" },
+  { car: "CN329", status: "待作業", dte: "—", date: "—", scheduledDate: "—", person: "—", afterStatus: "—", note: "操課用車 Training Vehicle（進階甲 Advanced-A）" },
+  { car: "CN330", status: "待作業", dte: "—", date: "—", scheduledDate: "—", person: "—", afterStatus: "—", note: "操課用車 Training Vehicle（進階甲 Advanced-A）" },
+  { car: "CN331", status: "待作業", dte: "—", date: "—", scheduledDate: "—", person: "—", afterStatus: "—", note: "操課用車 Training Vehicle（進階乙 Advanced-B）" },
+  { car: "CN347", status: "待作業", dte: "—", date: "—", scheduledDate: "—", person: "—", afterStatus: "—", note: "操課用車 Training Vehicle（專長丙 Specialist-C）" },
+  { car: "CN354", status: "待作業", dte: "—", date: "—", scheduledDate: "—", person: "—", afterStatus: "—", note: "操課用車 Training Vehicle（進階乙 Advanced-B）" },
+  { car: "CN361", status: "待作業", dte: "—", date: "—", scheduledDate: "—", person: "—", afterStatus: "—", note: "操課用車 Training Vehicle（專長丁 Specialist-D）" },
+  { car: "CN363", status: "待作業", dte: "—", date: "—", scheduledDate: "—", person: "—", afterStatus: "—", note: "操課用車 Training Vehicle（專長丁 Specialist-D）" },
+  { car: "CN364", status: "待作業", dte: "—", date: "—", scheduledDate: "—", person: "—", afterStatus: "—", note: "操課用車 Training Vehicle（專長戊 Specialist-E）" },
 ];
 // ==============================================
 
@@ -273,12 +275,13 @@ function render() {
 
   tbody.innerHTML = cars.map((car, idx) => {
     const r   = getRecord(car);
-    const st  = r?.status      || "待作業";
-    const dte = r?.dte         || "—";
-    const dt  = r?.date        || "—";
-    const per = r?.person      || "—";
-    const aft = r?.afterStatus || "—";
-    const nt  = r?.note        || "";
+    const st   = r?.status        || "待作業";
+    const dte  = r?.dte           || "—";
+    const dt   = r?.date          || "—";
+    const sdt  = r?.scheduledDate || "—";
+    const per  = r?.person        || "—";
+    const aft  = r?.afterStatus   || "—";
+    const nt   = r?.note          || "";
 
     const fullyDone  = st === "完成" && dte === "完成";
     const dcDoneOnly = st === "完成" && dte !== "完成";
@@ -305,11 +308,20 @@ function render() {
     else if (st === "完成")  dteBadge = `<span class="badge-status s-dte-pending">待查 Pending</span>`;
     else                    dteBadge = `<span style="color:#cbd5e1;">—</span>`;
 
+    // 作業日期 badge
+    let sdtCell;
+    if (sdt !== "—") {
+      sdtCell = `<span style="background:#e0f2fe;color:#0369a1;border-radius:12px;padding:2px 8px;font-size:0.78rem;font-weight:600;">${sdt}</span>`;
+    } else {
+      sdtCell = `<span style="color:#cbd5e1;">—</span>`;
+    }
+
     return `<tr style="${rowBg}">
       <td style="color:#94a3b8;font-size:0.75rem;">${idx+1}</td>
       <td class="car-no">${car}</td>
       <td>${dcBadge}</td>
       <td>${dteBadge}</td>
+      <td class="date">${sdtCell}</td>
       <td class="date">${dt}</td>
       <td class="person">${per}</td>
       <td class="after-status">${aft}</td>
