@@ -76,6 +76,44 @@
   }
   .progress-label { font-size: 0.75rem; color: #64748b; margin-bottom: 4px; }
 
+  .wip-banner {
+    padding: 10px 28px;
+    background: linear-gradient(135deg, #fffbeb, #fef3c7);
+    border-bottom: 2px solid #fbbf24;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    flex-wrap: wrap;
+  }
+  .wip-banner .wip-label {
+    font-size: 0.8rem;
+    font-weight: 700;
+    color: #92400e;
+    white-space: nowrap;
+  }
+  .wip-banner .wip-cars {
+    display: flex;
+    gap: 6px;
+    flex-wrap: wrap;
+  }
+  .wip-car-tag {
+    background: #d97706;
+    color: white;
+    border-radius: 16px;
+    padding: 3px 10px;
+    font-size: 0.8rem;
+    font-weight: 700;
+    font-family: monospace;
+    letter-spacing: 0.3px;
+  }
+  .wip-banner .wip-date {
+    margin-left: auto;
+    font-size: 0.75rem;
+    color: #92400e;
+    opacity: 0.75;
+    white-space: nowrap;
+  }
+
   .updated-info {
     padding: 8px 28px;
     background: #fffbeb;
@@ -172,6 +210,12 @@
   <div class="stat-card wip"><div class="num" id="statWip">0</div><div class="lbl">進行中<br>In Progress</div></div>
   <div class="stat-card pending"><div class="num" id="statPending">54</div><div class="lbl">待作業<br>Pending</div></div>
   <div class="stat-card rate"><div class="num" id="statRate">0%</div><div class="lbl">完成率<br>Completion</div></div>
+</div>
+
+<div class="wip-banner" id="wipBanner">
+  <span class="wip-label">🔧 進行中 In Progress</span>
+  <div class="wip-cars" id="wipCarTags"></div>
+  <span class="wip-date" id="wipDateLabel"></span>
 </div>
 
 <div class="progress-wrap">
@@ -328,6 +372,23 @@ function render() {
       <td class="note">${nt}</td>
     </tr>`;
   }).join("");
+
+  // 進行中布條
+  const wipCars = cars.filter(c => (getRecord(c)?.status || "待作業") === "進行中");
+  const wipTagsEl = document.getElementById("wipCarTags");
+  const wipBanner = document.getElementById("wipBanner");
+  if (wipCars.length > 0) {
+    wipTagsEl.innerHTML = wipCars.map(c => {
+      const sdt = getRecord(c)?.scheduledDate || "—";
+      return `<span class="wip-car-tag">${c}</span>`;
+    }).join("");
+    // 若有排定作業日期，取第一筆顯示
+    const dates = [...new Set(wipCars.map(c => getRecord(c)?.scheduledDate).filter(d => d && d !== "—"))];
+    document.getElementById("wipDateLabel").textContent = dates.length ? `📅 預計作業 Scheduled：${dates.join("、")}` : "";
+    wipBanner.style.display = "flex";
+  } else {
+    wipBanner.style.display = "none";
+  }
 
   const pendingCount = TOTAL - doneCount - wipCount;
   const rate = Math.round((doneCount / TOTAL) * 100);
