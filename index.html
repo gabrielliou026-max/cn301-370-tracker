@@ -203,7 +203,7 @@
 
 <div class="legend">
   <div class="legend-item"><div class="legend-dot ld-done"></div>全部完成 All Done</div>
-  <div class="legend-item"><div class="legend-dot ld-dc-done"></div>降級完成 待DT&amp;E</div>
+  <div class="legend-item"><div class="legend-dot ld-dc-done"></div>降級完成 待DT&amp;E / Demoted, DT&amp;E Pending</div>
   <div class="legend-item"><div class="legend-dot ld-wip"></div>進行中 In Progress</div>
   <div class="legend-item"><div class="legend-dot ld-pend"></div>待作業 Pending</div>
 </div>
@@ -295,7 +295,7 @@ function render() {
     // DC降級狀態 badge
     let dcBadge;
     if (fullyDone)         dcBadge = `<span class="badge-status s-complete">✓ 完成 Done</span>`;
-    else if (dcDoneOnly)   dcBadge = `<span class="badge-status s-dc-done">降級完成 待DT&amp;E</span>`;
+    else if (dcDoneOnly)   dcBadge = `<span class="badge-status s-dc-done">降級完成 待DT&amp;E<br><span style="font-size:0.68rem;opacity:0.8;">Demoted / DT&amp;E Pending</span></span>`;
     else if (st === "進行中") dcBadge = `<span class="badge-status s-wip">進行中 In Progress</span>`;
     else                   dcBadge = `<span class="badge-status s-pending">待作業 Pending</span>`;
 
