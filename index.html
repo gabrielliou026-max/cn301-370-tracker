@@ -164,6 +164,8 @@
   .s-pending    { background: #f1f5f9; color: #64748b; }
   .s-dc-done    { background: #dbeafe; color: #1e40af; }
   .s-dte-pending{ background: #fce7f3; color: #9d174d; font-size: 0.72rem; }
+  .s-incomplete { background: #fee2e2; color: #991b1b; }
+  .ld-incomplete { background: #ef4444; }
 
   td.note { color: #64748b; font-size: 0.8rem; max-width: 200px; }
   td.date { white-space: nowrap; font-size: 0.82rem; }
@@ -251,6 +253,7 @@
   <div class="legend-item"><div class="legend-dot ld-dc-done"></div>降級完成 待DT&amp;E / Demoted, DT&amp;E Pending</div>
   <div class="legend-item"><div class="legend-dot ld-wip"></div>進行中 In Progress</div>
   <div class="legend-item"><div class="legend-dot ld-pend"></div>待作業 Pending</div>
+  <div class="legend-item"><div class="legend-dot ld-incomplete"></div>未完成 Incomplete</div>
 </div>
 
 <footer>CN301-370 DC Demotion Tracking System　｜　DC降級作業追蹤系統　｜　Last Updated 最後更新：<span id="footerUpdated">-</span></footer>
@@ -289,7 +292,7 @@ const DATA = [
   { car: "CN305", status: "完成", dte: "完成", date: "2026-05-27", scheduledDate: "—", person: "—", afterStatus: "—", note: "" },
   { car: "CN306", status: "進行中", dte: "—", date: "—", scheduledDate: "2026-05-28", person: "—", afterStatus: "—", note: "" },
   { car: "CN309", status: "完成", dte: "完成", date: "2026-05-27", scheduledDate: "—", person: "—", afterStatus: "—", note: "" },
-  { car: "CN311", status: "完成", dte: "完成", date: "2026-05-27", scheduledDate: "—", person: "—", afterStatus: "—", note: "操課用車 Training Vehicle（進階甲 Advanced-A）　⚠️ 須重灌 Requires Reinstall" },
+  { car: "CN311", status: "未完成", dte: "—", date: "2026-05-27", scheduledDate: "—", person: "—", afterStatus: "—", note: "操課用車 Training Vehicle（進階甲 Advanced-A）　⚠️ 須重灌 Requires Reinstall" },
   { car: "CN355", status: "進行中", dte: "—", date: "—", scheduledDate: "2026-05-28", person: "—", afterStatus: "—", note: "" },
   { car: "CN313", status: "待作業", dte: "—", date: "—", scheduledDate: "—", person: "—", afterStatus: "—", note: "操課用車 Training Vehicle（專長戊 Specialist-E）" },
   { car: "CN322", status: "待作業", dte: "—", date: "—", scheduledDate: "—", person: "—", afterStatus: "—", note: "操課用車 Training Vehicle（專長己 Specialist-F）" },
@@ -334,22 +337,25 @@ function render() {
 
     const fullyDone  = st === "完成" && dte === "完成";
     const dcDoneOnly = st === "完成" && dte !== "完成";
+    const incomplete = st === "未完成";
 
-    if (fullyDone)    doneCount++;
+    if (fullyDone)       doneCount++;
     if (st === "進行中") wipCount++;
 
     // 整行背景
     let rowBg = "";
-    if (fullyDone)    rowBg = "background:#f0fdf4;";
-    else if (dcDoneOnly) rowBg = "background:#eff6ff;";
+    if (fullyDone)           rowBg = "background:#f0fdf4;";
+    else if (incomplete)     rowBg = "background:#fff1f2;";
+    else if (dcDoneOnly)     rowBg = "background:#eff6ff;";
     else if (st === "進行中") rowBg = "background:#fffbeb;";
 
     // DC降級狀態 badge
     let dcBadge;
-    if (fullyDone)         dcBadge = `<span class="badge-status s-complete">✓ 完成 Done</span>`;
-    else if (dcDoneOnly)   dcBadge = `<span class="badge-status s-dc-done">降級完成 待DT&amp;E<br><span style="font-size:0.68rem;opacity:0.8;">Demoted / DT&amp;E Pending</span></span>`;
+    if (fullyDone)           dcBadge = `<span class="badge-status s-complete">✓ 完成 Done</span>`;
+    else if (incomplete)     dcBadge = `<span class="badge-status s-incomplete">✗ 未完成 Incomplete</span>`;
+    else if (dcDoneOnly)     dcBadge = `<span class="badge-status s-dc-done">降級完成 待DT&amp;E<br><span style="font-size:0.68rem;opacity:0.8;">Demoted / DT&amp;E Pending</span></span>`;
     else if (st === "進行中") dcBadge = `<span class="badge-status s-wip">進行中 In Progress</span>`;
-    else                   dcBadge = `<span class="badge-status s-pending">待作業 Pending</span>`;
+    else                     dcBadge = `<span class="badge-status s-pending">待作業 Pending</span>`;
 
     // DT&E 欄位 badge
     let dteBadge;
