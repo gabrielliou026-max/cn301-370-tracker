@@ -387,7 +387,7 @@ function render() {
     else                    dteBadge = `<span style="color:#cbd5e1;">—</span>`;
 
     // MissionOps 下拉選單
-    const moVal = localStorage.getItem("mo_" + car) || "—";
+    const moVal = moData[car] || "—";
     const moClass = moVal === "已完成" ? "mo-done" : moVal === "更新中" ? "mo-wip" : moVal === "不需更新" ? "mo-na" : "mo-pending";
     const moSelect = `<select class="mo-select ${moClass}" onchange="saveMO('${car}',this)">
       <option value="—"      ${moVal==="—"?"selected":""}>—</option>
@@ -461,13 +461,46 @@ function render() {
   }
 }
 
+// ── Firebase Firestore 即時同步 ──
+const moData = {};
+
 function saveMO(car, sel) {
-  localStorage.setItem("mo_" + car, sel.value);
-  const cls = sel.value === "已完成" ? "mo-done" : sel.value === "更新中" ? "mo-wip" : sel.value === "不需更新" ? "mo-na" : "mo-pending";
+  const val = sel.value;
+  // 即時更新顏色
+  const cls = val === "已完成" ? "mo-done" : val === "更新中" ? "mo-wip" : val === "不需更新" ? "mo-na" : "mo-pending";
   sel.className = "mo-select " + cls;
+  // 寫入 Firestore
+  db.collection("missionOps").doc(car).set({ value: val, updatedAt: new Date().toISOString() });
 }
 
 render();
+</script>
+
+<!-- Firebase SDK -->
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore-compat.js"></script>
+<script>
+const firebaseConfig = {
+  apiKey: "AIzaSyBRNMZFCSnWk1X_HZMuDa_ym-Zvwk9ei-U",
+  authDomain: "fics-6e2cd.firebaseapp.com",
+  projectId: "fics-6e2cd",
+  storageBucket: "fics-6e2cd.firebasestorage.app",
+  messagingSenderId: "995935936553",
+  appId: "1:995935936553:web:d5d80b56bed9bf681c3c38"
+};
+
+firebase.initializeApp(firebaseConfig);
+const db = firebase.firestore();
+
+// 即時監聽 missionOps 集合，有任何變更自動更新畫面
+db.collection("missionOps").onSnapshot(snapshot => {
+  snapshot.forEach(doc => {
+    moData[doc.id] = doc.data().value || "—";
+  });
+  render();
+}, err => {
+  console.warn("Firestore 連線失敗，改用本地模式", err);
+});
 </script>
 </body>
 </html>
