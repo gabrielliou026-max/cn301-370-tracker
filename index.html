@@ -172,6 +172,26 @@
   td.after-status { font-size: 0.82rem; }
   td.person { font-size: 0.82rem; }
 
+  .mo-select {
+    border: 1px solid #e2e8f0;
+    border-radius: 8px;
+    padding: 4px 8px;
+    font-size: 0.78rem;
+    font-family: inherit;
+    background: #f8fafc;
+    color: #1a2332;
+    cursor: pointer;
+    outline: none;
+    transition: border-color 0.15s, background 0.15s;
+    min-width: 120px;
+  }
+  .mo-select:hover { border-color: #94a3b8; }
+  .mo-select:focus { border-color: #2d4a8a; background: white; }
+  .mo-select.mo-done    { background: #dcfce7; color: #166534; border-color: #86efac; }
+  .mo-select.mo-wip     { background: #fef3c7; color: #92400e; border-color: #fcd34d; }
+  .mo-select.mo-pending { background: #f1f5f9; color: #64748b; border-color: #e2e8f0; }
+  .mo-select.mo-na      { background: #f1f5f9; color: #94a3b8; border-color: #e2e8f0; }
+
   .legend {
     display: flex;
     gap: 16px;
@@ -241,6 +261,7 @@
         <th>完成日期<br><span style="font-weight:400;opacity:0.7;font-size:0.7rem;">Completion Date</span></th>
         <th>負責人員<br><span style="font-weight:400;opacity:0.7;font-size:0.7rem;">Technician</span></th>
         <th>降級後狀態<br><span style="font-weight:400;opacity:0.7;font-size:0.7rem;">Post-Demotion</span></th>
+        <th>MissionOps更新<br><span style="font-weight:400;opacity:0.7;font-size:0.7rem;">Software Update</span></th>
         <th>註記<br><span style="font-weight:400;opacity:0.7;font-size:0.7rem;">Notes</span></th>
       </tr>
     </thead>
@@ -365,6 +386,17 @@ function render() {
     else if (st === "完成")  dteBadge = `<span class="badge-status s-dte-pending">待查 Pending</span>`;
     else                    dteBadge = `<span style="color:#cbd5e1;">—</span>`;
 
+    // MissionOps 下拉選單
+    const moVal = localStorage.getItem("mo_" + car) || "—";
+    const moClass = moVal === "已完成" ? "mo-done" : moVal === "更新中" ? "mo-wip" : moVal === "不需更新" ? "mo-na" : "mo-pending";
+    const moSelect = `<select class="mo-select ${moClass}" onchange="saveMO('${car}',this)">
+      <option value="—"      ${moVal==="—"?"selected":""}>—</option>
+      <option value="待更新"  ${moVal==="待更新"?"selected":""}>⏳ 待更新 Pending</option>
+      <option value="更新中"  ${moVal==="更新中"?"selected":""}>🔄 更新中 In Progress</option>
+      <option value="已完成"  ${moVal==="已完成"?"selected":""}>✅ 已完成 Completed</option>
+      <option value="不需更新" ${moVal==="不需更新"?"selected":""}>— 不需更新 N/A</option>
+    </select>`;
+
     // 作業日期 badge
     let sdtCell;
     if (sdt !== "—") {
@@ -382,6 +414,7 @@ function render() {
       <td class="date">${dt}</td>
       <td class="person">${per}</td>
       <td class="after-status">${aft}</td>
+      <td>${moSelect}</td>
       <td class="note">${nt}</td>
     </tr>`;
   }).join("");
@@ -426,6 +459,12 @@ function render() {
     infoEl.style.color = "#166534";
     infoEl.textContent = `✅ Last Updated 最後更新：${LAST_UPDATED}　｜　${doneCount} units completed (${rate}%) 已完成`;
   }
+}
+
+function saveMO(car, sel) {
+  localStorage.setItem("mo_" + car, sel.value);
+  const cls = sel.value === "已完成" ? "mo-done" : sel.value === "更新中" ? "mo-wip" : sel.value === "不需更新" ? "mo-na" : "mo-pending";
+  sel.className = "mo-select " + cls;
 }
 
 render();
