@@ -192,6 +192,28 @@
   .mo-select.mo-pending { background: #f1f5f9; color: #64748b; border-color: #e2e8f0; }
   .mo-select.mo-na      { background: #f1f5f9; color: #94a3b8; border-color: #e2e8f0; }
 
+  .ds-select, .dte-select {
+    border: 1px solid #e2e8f0;
+    border-radius: 20px;
+    padding: 3px 10px;
+    font-size: 0.75rem;
+    font-weight: 600;
+    font-family: inherit;
+    cursor: pointer;
+    outline: none;
+    transition: border-color 0.15s, background 0.15s;
+    white-space: nowrap;
+  }
+  .ds-select:hover, .dte-select:hover { filter: brightness(0.96); }
+  .ds-select:focus, .dte-select:focus { border-color: #2d4a8a; }
+  .ds-select.ds-done       { background: #dcfce7; color: #166534; border-color: #86efac; }
+  .ds-select.ds-wip        { background: #fef3c7; color: #92400e; border-color: #fcd34d; }
+  .ds-select.ds-pending    { background: #f1f5f9; color: #64748b; border-color: #e2e8f0; }
+  .ds-select.ds-incomplete { background: #fee2e2; color: #991b1b; border-color: #fca5a5; }
+  .dte-select.dte-done     { background: #dcfce7; color: #166534; border-color: #86efac; }
+  .dte-select.dte-pending  { background: #fce7f3; color: #9d174d; border-color: #fbcfe8; }
+  .dte-select.dte-na       { background: #f1f5f9; color: #94a3b8; border-color: #e2e8f0; }
+
   .legend {
     display: flex;
     gap: 16px;
@@ -281,7 +303,7 @@
 
 <script>
 // ===== 進度資料區（每次更新只需修改此處） =====
-const LAST_UPDATED = "2026-06-05"; // v11
+const LAST_UPDATED = "2026-06-05"; // v12 — DC降級/DT&E 改為即時雲端同步下拉選單
 const DATA = [
   // ── 已完成 Completed ──
   { car: "CN302", status: "完成", dte: "完成", date: "2026-05-23", scheduledDate: "—", person: "Mark", afterStatus: "—", note: "操課用車 Training Vehicle（專長丁 Specialist-D）" },
@@ -349,9 +371,10 @@ function render() {
   let doneCount = 0, wipCount = 0;
 
   tbody.innerHTML = cars.map((car, idx) => {
-    const r   = getRecord(car);
-    const st   = r?.status        || "待作業";
-    const dte  = r?.dte           || "—";
+    const r    = getRecord(car);
+    const live = liveStatus[car] || {};
+    const st   = live.demotion || r?.status || "待作業";
+    const dte  = live.dte      || r?.dte    || "—";
     const dt   = r?.date          || "—";
     const sdt  = r?.scheduledDate || "—";
     const per  = r?.person        || "—";
@@ -372,19 +395,22 @@ function render() {
     else if (dcDoneOnly)     rowBg = "background:#eff6ff;";
     else if (st === "進行中") rowBg = "background:#fffbeb;";
 
-    // DC降級狀態 badge
-    let dcBadge;
-    if (fullyDone)           dcBadge = `<span class="badge-status s-complete">✓ 完成 Done</span>`;
-    else if (incomplete)     dcBadge = `<span class="badge-status s-incomplete">✗ 未完成 Incomplete</span>`;
-    else if (dcDoneOnly)     dcBadge = `<span class="badge-status s-dc-done">降級完成 待DT&amp;E<br><span style="font-size:0.68rem;opacity:0.8;">Demoted / DT&amp;E Pending</span></span>`;
-    else if (st === "進行中") dcBadge = `<span class="badge-status s-wip">進行中 In Progress</span>`;
-    else                     dcBadge = `<span class="badge-status s-pending">待作業 Pending</span>`;
+    // DC降級狀態 — 即時可編輯下拉選單（寫入 Firestore，跨裝置同步）
+    const dsCls = st === "完成" ? "ds-done" : st === "進行中" ? "ds-wip" : st === "未完成" ? "ds-incomplete" : "ds-pending";
+    const dcBadge = `<select class="ds-select ${dsCls}" onchange="saveDemotion('${car}',this)">
+      <option value="待作業" ${st==="待作業"?"selected":""}>待作業 Pending</option>
+      <option value="進行中" ${st==="進行中"?"selected":""}>進行中 In Progress</option>
+      <option value="完成"   ${st==="完成"?"selected":""}>✓ 完成 Done</option>
+      <option value="未完成" ${st==="未完成"?"selected":""}>✗ 未完成 Incomplete</option>
+    </select>`;
 
-    // DT&E 欄位 badge
-    let dteBadge;
-    if (dte === "完成")      dteBadge = `<span class="badge-status s-complete">✓ 完成</span>`;
-    else if (st === "完成")  dteBadge = `<span class="badge-status s-dte-pending">待查 Pending</span>`;
-    else                    dteBadge = `<span style="color:#cbd5e1;">—</span>`;
+    // DT&E 檢查 — 即時可編輯下拉選單（寫入 Firestore，跨裝置同步）
+    const dteCls = dte === "完成" ? "dte-done" : dte === "待查" ? "dte-pending" : "dte-na";
+    const dteBadge = `<select class="dte-select ${dteCls}" onchange="saveDTE('${car}',this)">
+      <option value="—"   ${dte==="—"?"selected":""}>—</option>
+      <option value="待查" ${dte==="待查"?"selected":""}>待查 Pending</option>
+      <option value="完成" ${dte==="完成"?"selected":""}>✓ 完成 Done</option>
+    </select>`;
 
     // MissionOps 下拉選單
     const moVal = moData[car] || "—";
@@ -420,7 +446,7 @@ function render() {
   }).join("");
 
   // 進行中布條
-  const wipCars = cars.filter(c => (getRecord(c)?.status || "待作業") === "進行中");
+  const wipCars = cars.filter(c => (liveStatus[c]?.demotion || getRecord(c)?.status || "待作業") === "進行中");
   const wipTagsEl = document.getElementById("wipCarTags");
   const wipBanner = document.getElementById("wipBanner");
   if (wipCars.length > 0) {
@@ -463,6 +489,7 @@ function render() {
 
 // ── Firebase Firestore 即時同步 ──
 const moData = {};
+const liveStatus = {};   // { [car]: { demotion, dte, updatedAt } } — 來自雲端，跨裝置即時同步
 
 function saveMO(car, sel) {
   const val = sel.value;
@@ -471,6 +498,24 @@ function saveMO(car, sel) {
   sel.className = "mo-select " + cls;
   // 寫入 Firestore
   db.collection("missionOps").doc(car).set({ value: val, updatedAt: new Date().toISOString() });
+}
+
+function saveDemotion(car, sel) {
+  const val = sel.value;
+  // 即時更新顏色
+  const cls = val === "完成" ? "ds-done" : val === "進行中" ? "ds-wip" : val === "未完成" ? "ds-incomplete" : "ds-pending";
+  sel.className = "ds-select " + cls;
+  // 寫入 Firestore（merge：只更新 demotion 欄位，不影響 dte）
+  db.collection("carStatus").doc(car).set({ demotion: val, updatedAt: new Date().toISOString() }, { merge: true });
+}
+
+function saveDTE(car, sel) {
+  const val = sel.value;
+  // 即時更新顏色
+  const cls = val === "完成" ? "dte-done" : val === "待查" ? "dte-pending" : "dte-na";
+  sel.className = "dte-select " + cls;
+  // 寫入 Firestore（merge：只更新 dte 欄位，不影響 demotion）
+  db.collection("carStatus").doc(car).set({ dte: val, updatedAt: new Date().toISOString() }, { merge: true });
 }
 
 render();
@@ -499,7 +544,33 @@ db.collection("missionOps").onSnapshot(snapshot => {
   });
   render();
 }, err => {
-  console.warn("Firestore 連線失敗，改用本地模式", err);
+  console.warn("Firestore 連線失敗（missionOps），改用本地模式", err);
+});
+
+// 即時監聽 carStatus 集合（DC降級進度 / DT&E檢查），有任何變更自動更新畫面與統計數字
+db.collection("carStatus").onSnapshot(snapshot => {
+  snapshot.forEach(doc => {
+    liveStatus[doc.id] = doc.data();
+  });
+  render();
+}, err => {
+  console.warn("Firestore 連線失敗（carStatus），改用本地模式", err);
+});
+
+// 首次啟用：若雲端尚無 carStatus 資料，將目前 DATA 內容寫入雲端做為初始狀態（之後雲端即為主要資料來源）
+db.collection("carStatus").limit(1).get().then(snapshot => {
+  if (snapshot.empty) {
+    const batch = db.batch();
+    cars.forEach(car => {
+      const r = getRecord(car);
+      batch.set(db.collection("carStatus").doc(car), {
+        demotion: r?.status || "待作業",
+        dte: r?.dte || "—",
+        updatedAt: new Date().toISOString()
+      });
+    });
+    batch.commit().then(() => console.log("✅ carStatus 雲端初始化完成"));
+  }
 });
 </script>
 </body>
