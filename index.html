@@ -228,6 +228,26 @@
   .mo-select.mo-pending { background: #f1f5f9; color: #64748b; border-color: #e2e8f0; }
   .mo-select.mo-na      { background: #f1f5f9; color: #94a3b8; border-color: #e2e8f0; }
 
+  .radio-select {
+    border: 1px solid #e2e8f0;
+    border-radius: 8px;
+    padding: 4px 8px;
+    font-size: 0.78rem;
+    font-family: inherit;
+    background: #f8fafc;
+    color: #1a2332;
+    cursor: pointer;
+    outline: none;
+    transition: border-color 0.15s, background 0.15s;
+    min-width: 120px;
+  }
+  .radio-select:hover { border-color: #94a3b8; }
+  .radio-select:focus { border-color: #2d4a8a; background: white; }
+  .radio-select.radio-done    { background: #dcfce7; color: #166534; border-color: #86efac; }
+  .radio-select.radio-wip     { background: #e0e7ff; color: #3730a3; border-color: #a5b4fc; }
+  .radio-select.radio-pending { background: #f1f5f9; color: #64748b; border-color: #e2e8f0; }
+  .radio-select.radio-na      { background: #f1f5f9; color: #94a3b8; border-color: #e2e8f0; }
+
   .ds-select, .dte-select {
     border: 1px solid #e2e8f0;
     border-radius: 20px;
@@ -320,6 +340,7 @@
         <th>負責人員<br><span style="font-weight:400;opacity:0.7;font-size:0.7rem;">Technician</span></th>
         <th>降級後狀態<br><span style="font-weight:400;opacity:0.7;font-size:0.7rem;">Post-Demotion</span></th>
         <th>MissionOps更新<br><span style="font-weight:400;opacity:0.7;font-size:0.7rem;">Software Update</span></th>
+        <th>無線電更新<br><span style="font-weight:400;opacity:0.7;font-size:0.7rem;">Radio Update</span></th>
         <th>註記<br><span style="font-weight:400;opacity:0.7;font-size:0.7rem;">Notes</span></th>
       </tr>
     </thead>
@@ -345,7 +366,7 @@
 
 <script>
 // ===== 進度資料區（每次更新只需修改此處） =====
-const LAST_UPDATED = "2026-06-05"; // v13 — 新增「儲存並送出」批次提交機制（暫存後一次同步）
+const LAST_UPDATED = "2026-06-08"; // v14 — 新增「無線電更新」欄位（radioUpdate，比照 v13 暫存批次送出機制，存於 carStatus collection）
 const DATA = [
   // ── 已完成 Completed ──
   { car: "CN302", status: "完成", dte: "完成", date: "2026-05-23", scheduledDate: "—", person: "Mark", afterStatus: "—", note: "操課用車 Training Vehicle（專長丁 Specialist-D）" },
@@ -416,8 +437,9 @@ function render() {
     const r    = getRecord(car);
     const live = liveStatus[car] || {};
     const pend = pendingChanges[car] || {};
-    const st   = pend.demotion || live.demotion || r?.status || "待作業";
-    const dte  = pend.dte      || live.dte      || r?.dte    || "—";
+    const st   = pend.demotion   || live.demotion   || r?.status || "待作業";
+    const dte  = pend.dte        || live.dte        || r?.dte    || "—";
+    const radio = pend.radioUpdate || live.radioUpdate || "—";
     const dt   = r?.date          || "—";
     const sdt  = r?.scheduledDate || "—";
     const per  = r?.person        || "—";
@@ -469,6 +491,17 @@ function render() {
       <option value="不需更新" ${moVal==="不需更新"?"selected":""}>— 不需更新 N/A</option>
     </select>`;
 
+    // 無線電更新 下拉選單（先暫存於本機，按「儲存並送出」才會一次寫入 Firestore，與 carStatus 同份文件 merge）
+    const radioCls = radio === "已完成" ? "radio-done" : radio === "更新中" ? "radio-wip" : radio === "不需更新" ? "radio-na" : "radio-pending";
+    const radioPend = pend.radioUpdate !== undefined ? " pending-edit" : "";
+    const radioSelect = `<select class="radio-select ${radioCls}${radioPend}" onchange="saveRadio('${car}',this)">
+      <option value="—"      ${radio==="—"?"selected":""}>—</option>
+      <option value="待更新"  ${radio==="待更新"?"selected":""}>⏳ 待更新 Pending</option>
+      <option value="更新中"  ${radio==="更新中"?"selected":""}>🔄 更新中 In Progress</option>
+      <option value="已完成"  ${radio==="已完成"?"selected":""}>✅ 已完成 Completed</option>
+      <option value="不需更新" ${radio==="不需更新"?"selected":""}>— 不需更新 N/A</option>
+    </select>`;
+
     // 作業日期 badge
     let sdtCell;
     if (sdt !== "—") {
@@ -487,6 +520,7 @@ function render() {
       <td class="person">${per}</td>
       <td class="after-status">${aft}</td>
       <td>${moSelect}</td>
+      <td>${radioSelect}</td>
       <td class="note">${nt}</td>
     </tr>`;
   }).join("");
@@ -535,8 +569,8 @@ function render() {
 
 // ── Firebase Firestore 即時同步（採「先暫存、按下儲存才送出」模式）──
 const moData = {};
-const liveStatus = {};      // { [car]: { demotion, dte, updatedAt } } — 來自雲端，跨裝置即時同步
-const pendingChanges = {};  // { [car]: { demotion?, dte?, mo? } } — 尚未送出的本機暫存變更
+const liveStatus = {};      // { [car]: { demotion, dte, radioUpdate, updatedAt } } — 來自雲端，跨裝置即時同步
+const pendingChanges = {};  // { [car]: { demotion?, dte?, mo?, radioUpdate? } } — 尚未送出的本機暫存變更
 
 // 把選單改動暫存到本機，並標記為「未儲存」（橘色虛線框），統一交給「儲存並送出」按鈕一次寫入雲端
 function stagePending(car, field, val, sel, activeCls, baseCls) {
@@ -562,6 +596,12 @@ function saveDTE(car, sel) {
   const val = sel.value;
   const cls = val === "完成" ? "dte-done" : val === "待查" ? "dte-pending" : "dte-na";
   stagePending(car, "dte", val, sel, cls, "dte-select");
+}
+
+function saveRadio(car, sel) {
+  const val = sel.value;
+  const cls = val === "已完成" ? "radio-done" : val === "更新中" ? "radio-wip" : val === "不需更新" ? "radio-na" : "radio-pending";
+  stagePending(car, "radioUpdate", val, sel, cls, "radio-select");
 }
 
 // 更新底部浮動的「儲存列」：顯示尚未送出的變更數量
@@ -590,8 +630,9 @@ function commitChanges() {
   carsToSave.forEach(car => {
     const f = pendingChanges[car];
     const csFields = {};
-    if (f.demotion !== undefined) csFields.demotion = f.demotion;
-    if (f.dte      !== undefined) csFields.dte      = f.dte;
+    if (f.demotion    !== undefined) csFields.demotion    = f.demotion;
+    if (f.dte         !== undefined) csFields.dte         = f.dte;
+    if (f.radioUpdate !== undefined) csFields.radioUpdate = f.radioUpdate;
     if (Object.keys(csFields).length) {
       csFields.updatedAt = now;
       batch.set(db.collection("carStatus").doc(car), csFields, { merge: true });
@@ -666,10 +707,27 @@ db.collection("carStatus").limit(1).get().then(snapshot => {
       batch.set(db.collection("carStatus").doc(car), {
         demotion: r?.status || "待作業",
         dte: r?.dte || "—",
+        radioUpdate: r?.radioUpdate || "—",
         updatedAt: new Date().toISOString()
       });
     });
     batch.commit().then(() => console.log("✅ carStatus 雲端初始化完成"));
+  }
+});
+
+// 補種：既有 carStatus 文件（v12/v13 已建立）尚無 radioUpdate 欄位，
+// 補上預設值 "—"，避免影響既有 demotion / dte 資料（merge 寫入）
+db.collection("carStatus").get().then(snapshot => {
+  const batch = db.batch();
+  let needsSeed = false;
+  snapshot.forEach(doc => {
+    if (doc.data().radioUpdate === undefined) {
+      needsSeed = true;
+      batch.set(doc.ref, { radioUpdate: "—" }, { merge: true });
+    }
+  });
+  if (needsSeed) {
+    batch.commit().then(() => console.log("✅ carStatus radioUpdate 欄位補種完成"));
   }
 });
 </script>
