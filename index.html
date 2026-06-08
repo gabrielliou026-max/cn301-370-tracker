@@ -7,7 +7,43 @@
 <style>
   :root { color-scheme: light; }
   * { box-sizing: border-box; margin: 0; padding: 0; }
-  body { font-family: 'Segoe UI', Arial, sans-serif; background: #f0f4f8; color: #1a2332; }
+  body { font-family: 'Segoe UI', Arial, sans-serif; background: #f0f4f8; color: #1a2332; padding-bottom: 64px; }
+
+  .save-bar {
+    position: fixed;
+    bottom: 0; left: 0; right: 0;
+    z-index: 1000;
+    background: linear-gradient(135deg, #1a2f5e 0%, #2d4a8a 100%);
+    color: white;
+    padding: 12px 28px;
+    display: none;
+    align-items: center;
+    gap: 16px;
+    flex-wrap: wrap;
+    box-shadow: 0 -2px 14px rgba(0,0,0,0.3);
+  }
+  .save-bar .save-bar-text { font-size: 0.85rem; }
+  .save-bar .save-bar-text strong { color: #fbbf24; font-size: 1.05rem; }
+  .save-bar .save-btn, .save-bar .discard-btn {
+    border: none;
+    border-radius: 8px;
+    padding: 8px 18px;
+    font-size: 0.82rem;
+    font-weight: 700;
+    font-family: inherit;
+    cursor: pointer;
+    transition: filter 0.15s, transform 0.1s;
+  }
+  .save-bar .save-btn { background: #16a34a; color: white; margin-left: auto; }
+  .save-bar .save-btn:hover { filter: brightness(1.1); }
+  .save-bar .discard-btn { background: rgba(255,255,255,0.12); color: white; border: 1px solid rgba(255,255,255,0.35); }
+  .save-bar .discard-btn:hover { background: rgba(255,255,255,0.22); }
+  .save-bar .save-btn:active, .save-bar .discard-btn:active { transform: scale(0.96); }
+
+  select.pending-edit {
+    border: 2px dashed #f97316 !important;
+    box-shadow: 0 0 0 3px rgba(249,115,22,0.18);
+  }
 
   header {
     background: linear-gradient(135deg, #1a2f5e 0%, #2d4a8a 100%);
@@ -299,11 +335,17 @@
   <div class="legend-item"><div class="legend-dot ld-incomplete"></div>未完成 Incomplete</div>
 </div>
 
+<div class="save-bar" id="saveBar">
+  <span class="save-bar-text" id="saveBarText">📝 你有 <strong id="saveBarCount">0</strong> 項變更尚未儲存　Unsaved changes</span>
+  <button class="discard-btn" onclick="discardChanges()">✕ 放棄變更 Discard</button>
+  <button class="save-btn" onclick="commitChanges()">💾 儲存並送出 Save &amp; Submit</button>
+</div>
+
 <footer>CN301-370 DC Demotion Tracking System　｜　DC降級作業追蹤系統　｜　Last Updated 最後更新：<span id="footerUpdated">-</span></footer>
 
 <script>
 // ===== 進度資料區（每次更新只需修改此處） =====
-const LAST_UPDATED = "2026-06-05"; // v12 — DC降級/DT&E 改為即時雲端同步下拉選單
+const LAST_UPDATED = "2026-06-05"; // v13 — 新增「儲存並送出」批次提交機制（暫存後一次同步）
 const DATA = [
   // ── 已完成 Completed ──
   { car: "CN302", status: "完成", dte: "完成", date: "2026-05-23", scheduledDate: "—", person: "Mark", afterStatus: "—", note: "操課用車 Training Vehicle（專長丁 Specialist-D）" },
@@ -373,8 +415,9 @@ function render() {
   tbody.innerHTML = cars.map((car, idx) => {
     const r    = getRecord(car);
     const live = liveStatus[car] || {};
-    const st   = live.demotion || r?.status || "待作業";
-    const dte  = live.dte      || r?.dte    || "—";
+    const pend = pendingChanges[car] || {};
+    const st   = pend.demotion || live.demotion || r?.status || "待作業";
+    const dte  = pend.dte      || live.dte      || r?.dte    || "—";
     const dt   = r?.date          || "—";
     const sdt  = r?.scheduledDate || "—";
     const per  = r?.person        || "—";
@@ -395,27 +438,30 @@ function render() {
     else if (dcDoneOnly)     rowBg = "background:#eff6ff;";
     else if (st === "進行中") rowBg = "background:#fffbeb;";
 
-    // DC降級狀態 — 即時可編輯下拉選單（寫入 Firestore，跨裝置同步）
+    // DC降級狀態 — 下拉選單（先暫存於本機，按「儲存並送出」才會一次寫入 Firestore）
     const dsCls = st === "完成" ? "ds-done" : st === "進行中" ? "ds-wip" : st === "未完成" ? "ds-incomplete" : "ds-pending";
-    const dcBadge = `<select class="ds-select ${dsCls}" onchange="saveDemotion('${car}',this)">
+    const dsPend = pend.demotion !== undefined ? " pending-edit" : "";
+    const dcBadge = `<select class="ds-select ${dsCls}${dsPend}" onchange="saveDemotion('${car}',this)">
       <option value="待作業" ${st==="待作業"?"selected":""}>待作業 Pending</option>
       <option value="進行中" ${st==="進行中"?"selected":""}>進行中 In Progress</option>
       <option value="完成"   ${st==="完成"?"selected":""}>✓ 完成 Done</option>
       <option value="未完成" ${st==="未完成"?"selected":""}>✗ 未完成 Incomplete</option>
     </select>`;
 
-    // DT&E 檢查 — 即時可編輯下拉選單（寫入 Firestore，跨裝置同步）
+    // DT&E 檢查 — 下拉選單（先暫存於本機，按「儲存並送出」才會一次寫入 Firestore）
     const dteCls = dte === "完成" ? "dte-done" : dte === "待查" ? "dte-pending" : "dte-na";
-    const dteBadge = `<select class="dte-select ${dteCls}" onchange="saveDTE('${car}',this)">
+    const dtePend = pend.dte !== undefined ? " pending-edit" : "";
+    const dteBadge = `<select class="dte-select ${dteCls}${dtePend}" onchange="saveDTE('${car}',this)">
       <option value="—"   ${dte==="—"?"selected":""}>—</option>
       <option value="待查" ${dte==="待查"?"selected":""}>待查 Pending</option>
       <option value="完成" ${dte==="完成"?"selected":""}>✓ 完成 Done</option>
     </select>`;
 
-    // MissionOps 下拉選單
-    const moVal = moData[car] || "—";
+    // MissionOps 下拉選單（先暫存於本機，按「儲存並送出」才會一次寫入 Firestore）
+    const moVal = pend.mo || moData[car] || "—";
     const moClass = moVal === "已完成" ? "mo-done" : moVal === "更新中" ? "mo-wip" : moVal === "不需更新" ? "mo-na" : "mo-pending";
-    const moSelect = `<select class="mo-select ${moClass}" onchange="saveMO('${car}',this)">
+    const moPend = pend.mo !== undefined ? " pending-edit" : "";
+    const moSelect = `<select class="mo-select ${moClass}${moPend}" onchange="saveMO('${car}',this)">
       <option value="—"      ${moVal==="—"?"selected":""}>—</option>
       <option value="待更新"  ${moVal==="待更新"?"selected":""}>⏳ 待更新 Pending</option>
       <option value="更新中"  ${moVal==="更新中"?"selected":""}>🔄 更新中 In Progress</option>
@@ -446,7 +492,7 @@ function render() {
   }).join("");
 
   // 進行中布條
-  const wipCars = cars.filter(c => (liveStatus[c]?.demotion || getRecord(c)?.status || "待作業") === "進行中");
+  const wipCars = cars.filter(c => (pendingChanges[c]?.demotion || liveStatus[c]?.demotion || getRecord(c)?.status || "待作業") === "進行中");
   const wipTagsEl = document.getElementById("wipCarTags");
   const wipBanner = document.getElementById("wipBanner");
   if (wipCars.length > 0) {
@@ -487,35 +533,89 @@ function render() {
   }
 }
 
-// ── Firebase Firestore 即時同步 ──
+// ── Firebase Firestore 即時同步（採「先暫存、按下儲存才送出」模式）──
 const moData = {};
-const liveStatus = {};   // { [car]: { demotion, dte, updatedAt } } — 來自雲端，跨裝置即時同步
+const liveStatus = {};      // { [car]: { demotion, dte, updatedAt } } — 來自雲端，跨裝置即時同步
+const pendingChanges = {};  // { [car]: { demotion?, dte?, mo? } } — 尚未送出的本機暫存變更
+
+// 把選單改動暫存到本機，並標記為「未儲存」（橘色虛線框），統一交給「儲存並送出」按鈕一次寫入雲端
+function stagePending(car, field, val, sel, activeCls, baseCls) {
+  if (!pendingChanges[car]) pendingChanges[car] = {};
+  pendingChanges[car][field] = val;
+  sel.className = baseCls + " " + activeCls + " pending-edit";
+  updateSaveBar();
+}
 
 function saveMO(car, sel) {
   const val = sel.value;
-  // 即時更新顏色
   const cls = val === "已完成" ? "mo-done" : val === "更新中" ? "mo-wip" : val === "不需更新" ? "mo-na" : "mo-pending";
-  sel.className = "mo-select " + cls;
-  // 寫入 Firestore
-  db.collection("missionOps").doc(car).set({ value: val, updatedAt: new Date().toISOString() });
+  stagePending(car, "mo", val, sel, cls, "mo-select");
 }
 
 function saveDemotion(car, sel) {
   const val = sel.value;
-  // 即時更新顏色
   const cls = val === "完成" ? "ds-done" : val === "進行中" ? "ds-wip" : val === "未完成" ? "ds-incomplete" : "ds-pending";
-  sel.className = "ds-select " + cls;
-  // 寫入 Firestore（merge：只更新 demotion 欄位，不影響 dte）
-  db.collection("carStatus").doc(car).set({ demotion: val, updatedAt: new Date().toISOString() }, { merge: true });
+  stagePending(car, "demotion", val, sel, cls, "ds-select");
 }
 
 function saveDTE(car, sel) {
   const val = sel.value;
-  // 即時更新顏色
   const cls = val === "完成" ? "dte-done" : val === "待查" ? "dte-pending" : "dte-na";
-  sel.className = "dte-select " + cls;
-  // 寫入 Firestore（merge：只更新 dte 欄位，不影響 demotion）
-  db.collection("carStatus").doc(car).set({ dte: val, updatedAt: new Date().toISOString() }, { merge: true });
+  stagePending(car, "dte", val, sel, cls, "dte-select");
+}
+
+// 更新底部浮動的「儲存列」：顯示尚未送出的變更數量
+function updateSaveBar() {
+  const count = Object.values(pendingChanges).reduce((sum, f) => sum + Object.keys(f).length, 0);
+  const bar = document.getElementById("saveBar");
+  const textEl = document.getElementById("saveBarText");
+  if (count > 0) {
+    textEl.innerHTML = `📝 你有 <strong>${count}</strong> 項變更尚未儲存　Unsaved changes`;
+    bar.style.display = "flex";
+  } else {
+    bar.style.display = "none";
+  }
+}
+
+// 按下「儲存並送出」：把所有暫存變更一次批次寫入 Firestore，送出後跨裝置即時同步給所有人
+function commitChanges() {
+  const carsToSave = Object.keys(pendingChanges);
+  if (carsToSave.length === 0) return;
+
+  const textEl = document.getElementById("saveBarText");
+  textEl.innerHTML = "⏳ 儲存中… Saving…";
+
+  const batch = db.batch();
+  const now = new Date().toISOString();
+  carsToSave.forEach(car => {
+    const f = pendingChanges[car];
+    const csFields = {};
+    if (f.demotion !== undefined) csFields.demotion = f.demotion;
+    if (f.dte      !== undefined) csFields.dte      = f.dte;
+    if (Object.keys(csFields).length) {
+      csFields.updatedAt = now;
+      batch.set(db.collection("carStatus").doc(car), csFields, { merge: true });
+    }
+    if (f.mo !== undefined) {
+      batch.set(db.collection("missionOps").doc(car), { value: f.mo, updatedAt: now });
+    }
+  });
+
+  batch.commit().then(() => {
+    Object.keys(pendingChanges).forEach(k => delete pendingChanges[k]);
+    textEl.innerHTML = "✅ 已成功儲存並同步給所有人！Saved &amp; synced!";
+    setTimeout(() => { document.getElementById("saveBar").style.display = "none"; render(); }, 1600);
+  }).catch(err => {
+    textEl.innerHTML = "❌ 儲存失敗，請重試　Save failed — please retry";
+    console.warn("批次寫入失敗", err);
+  });
+}
+
+// 按下「放棄變更」：清除本機暫存，畫面還原成雲端目前的狀態
+function discardChanges() {
+  Object.keys(pendingChanges).forEach(k => delete pendingChanges[k]);
+  document.getElementById("saveBar").style.display = "none";
+  render();
 }
 
 render();
