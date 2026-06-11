@@ -366,25 +366,25 @@
 
 <script>
 // ===== 進度資料區（每次更新只需修改此處） =====
-const LAST_UPDATED = "2026-06-11"; // v15 — 修正 CN321/323/353/356/357/358/360/362/370 DTE 欄位由「待查」更正為「完成」，行顏色改為全部完成（綠色）
+const LAST_UPDATED = "2026-06-08"; // v14 — 新增「無線電更新」欄位（radioUpdate，比照 v13 暫存批次送出機制，存於 carStatus collection）
 const DATA = [
   // ── 已完成 Completed ──
   { car: "CN302", status: "完成", dte: "完成", date: "2026-05-23", scheduledDate: "—", person: "Mark", afterStatus: "—", note: "操課用車 Training Vehicle（專長丁 Specialist-D）" },
   { car: "CN307", status: "完成", dte: "完成", date: "2026-05-23", scheduledDate: "—", person: "Mark", afterStatus: "—", note: "操課用車 Training Vehicle（專長己 Specialist-F）" },
-  { car: "CN321", status: "完成", dte: "完成", date: "2026-05-23", scheduledDate: "—", person: "Mark", afterStatus: "—", note: "" },
-  { car: "CN323", status: "完成", dte: "完成", date: "2026-05-23", scheduledDate: "—", person: "Mark", afterStatus: "—", note: "" },
+  { car: "CN321", status: "完成", dte: "待查", date: "2026-05-23", scheduledDate: "—", person: "Mark", afterStatus: "—", note: "" },
+  { car: "CN323", status: "完成", dte: "待查", date: "2026-05-23", scheduledDate: "—", person: "Mark", afterStatus: "—", note: "" },
   { car: "CN337", status: "完成", dte: "完成", date: "2026-05-23", scheduledDate: "—", person: "Mark", afterStatus: "—", note: "操課用車 Training Vehicle（專長甲 Specialist-A）" },
   { car: "CN339", status: "完成", dte: "完成", date: "2026-05-23", scheduledDate: "—", person: "Mark", afterStatus: "—", note: "操課用車 Training Vehicle（專長戊 Specialist-E）" },
   { car: "CN340", status: "完成", dte: "完成", date: "2026-05-23", scheduledDate: "—", person: "Mark", afterStatus: "—", note: "操課用車 Training Vehicle（專長戊 Specialist-E）" },
   { car: "CN345", status: "完成", dte: "完成", date: "2026-05-23", scheduledDate: "—", person: "Mark", afterStatus: "—", note: "操課用車 Training Vehicle（專長丁 Specialist-D）" },
   { car: "CN348", status: "完成", dte: "完成", date: "2026-05-23", scheduledDate: "—", person: "Mark", afterStatus: "—", note: "操課用車 Training Vehicle（進階乙 Advanced-B）" },
-  { car: "CN353", status: "完成", dte: "完成", date: "2026-05-23", scheduledDate: "—", person: "Mark", afterStatus: "—", note: "" },
-  { car: "CN356", status: "完成", dte: "完成", date: "2026-05-23", scheduledDate: "—", person: "Mark", afterStatus: "—", note: "" },
-  { car: "CN357", status: "完成", dte: "完成", date: "2026-05-23", scheduledDate: "—", person: "Mark", afterStatus: "—", note: "" },
-  { car: "CN358", status: "完成", dte: "完成", date: "2026-05-23", scheduledDate: "—", person: "Mark", afterStatus: "—", note: "" },
-  { car: "CN360", status: "完成", dte: "完成", date: "2026-05-23", scheduledDate: "—", person: "Mark", afterStatus: "—", note: "" },
-  { car: "CN362", status: "完成", dte: "完成", date: "2026-05-23", scheduledDate: "—", person: "Mark", afterStatus: "—", note: "" },
-  { car: "CN370", status: "完成", dte: "完成", date: "2026-05-23", scheduledDate: "—", person: "Mark", afterStatus: "—", note: "" },
+  { car: "CN353", status: "完成", dte: "待查", date: "2026-05-23", scheduledDate: "—", person: "Mark", afterStatus: "—", note: "" },
+  { car: "CN356", status: "完成", dte: "待查", date: "2026-05-23", scheduledDate: "—", person: "Mark", afterStatus: "—", note: "" },
+  { car: "CN357", status: "完成", dte: "待查", date: "2026-05-23", scheduledDate: "—", person: "Mark", afterStatus: "—", note: "" },
+  { car: "CN358", status: "完成", dte: "待查", date: "2026-05-23", scheduledDate: "—", person: "Mark", afterStatus: "—", note: "" },
+  { car: "CN360", status: "完成", dte: "待查", date: "2026-05-23", scheduledDate: "—", person: "Mark", afterStatus: "—", note: "" },
+  { car: "CN362", status: "完成", dte: "待查", date: "2026-05-23", scheduledDate: "—", person: "Mark", afterStatus: "—", note: "" },
+  { car: "CN370", status: "完成", dte: "待查", date: "2026-05-23", scheduledDate: "—", person: "Mark", afterStatus: "—", note: "" },
   { car: "CN304", status: "完成", dte: "完成", date: "2026-05-26", scheduledDate: "—", person: "Mark", afterStatus: "—", note: "操課用車 Training Vehicle（專長乙 Specialist-B）" },
   { car: "CN312", status: "完成", dte: "完成", date: "2026-05-26", scheduledDate: "—", person: "—", afterStatus: "—", note: "操課用車 Training Vehicle（專長甲 Specialist-A）" },
   { car: "CN336", status: "完成", dte: "完成", date: "2026-05-27", scheduledDate: "—", person: "Mark", afterStatus: "—", note: "操課用車 Training Vehicle（專長己 Specialist-F）" },
@@ -731,22 +731,6 @@ db.collection("carStatus").get().then(snapshot => {
   }
 });
 
-// v15 補種：修正 CN321/323/353/356/357/358/360/362/370 在雲端的 dte 由「待查」→「完成」
-// 使行顏色正確顯示為全部完成（綠色）
-const DTE_FIX_CARS = ["CN321","CN323","CN353","CN356","CN357","CN358","CN360","CN362","CN370"];
-db.collection("carStatus").get().then(snapshot => {
-  const batch = db.batch();
-  let needsFix = false;
-  snapshot.forEach(doc => {
-    if (DTE_FIX_CARS.includes(doc.id) && doc.data().dte === "待查") {
-      needsFix = true;
-      batch.set(doc.ref, { dte: "完成" }, { merge: true });
-    }
-  });
-  if (needsFix) {
-    batch.commit().then(() => console.log("✅ v15 DTE 待查→完成 修正完成"));
-  }
-});
 </script>
 </body>
 </html>
