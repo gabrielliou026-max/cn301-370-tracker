@@ -18,7 +18,7 @@
   header .title-block h1 { font-size: 1.15rem; font-weight: 700; letter-spacing: 0.5px; }
   header .title-block h1 .en { font-size: 0.8rem; font-weight: 400; opacity: 0.8; margin-left: 8px; }
   header .title-block p { font-size: 0.78rem; opacity: 0.75; margin-top: 3px; }
-  header .badge {
+  .badge {
     margin-left: auto; background: rgba(255,255,255,0.15);
     border: 1px solid rgba(255,255,255,0.3); border-radius: 20px;
     padding: 6px 14px; font-size: 0.8rem; white-space: nowrap;
@@ -34,30 +34,17 @@
     padding: 12px 16px; text-align: center;
   }
   .stat-card .num { font-size: 1.75rem; font-weight: 800; line-height: 1; }
-  .stat-card .lbl { font-size: 0.7rem; color: #64748b; margin-top: 4px; letter-spacing: 0.3px; line-height: 1.4; }
+  .stat-card .lbl { font-size: 0.7rem; color: #64748b; margin-top: 4px; line-height: 1.4; }
   .s-total .num { color: #1a2f5e; }
   .s-done  .num { color: #16a34a; }
   .s-fault .num { color: #dc2626; }
   .s-wip   .num { color: #d97706; }
   .s-pend  .num { color: #94a3b8; }
-  .s-rate  .num { font-size: 1.35rem; color: #2d4a8a; }
 
   .progress-wrap { padding: 0 28px 14px; background: white; border-bottom: 1px solid #dde3ed; }
   .progress-track { height: 10px; background: #e2e8f0; border-radius: 6px; overflow: hidden; margin-top: 2px; }
   .progress-fill { height: 100%; background: linear-gradient(90deg, #16a34a, #22c55e); border-radius: 6px; transition: width 0.5s ease; }
   .progress-label { font-size: 0.75rem; color: #64748b; margin-bottom: 4px; }
-
-  .toolbar {
-    padding: 12px 28px; background: white; border-bottom: 1px solid #dde3ed;
-    display: flex; align-items: center; gap: 12px; flex-wrap: wrap;
-  }
-  .add-col-btn {
-    background: #2d4a8a; color: white; border: none; border-radius: 8px;
-    padding: 8px 18px; font-size: 0.82rem; font-weight: 600;
-    cursor: pointer; transition: filter 0.15s; white-space: nowrap;
-  }
-  .add-col-btn:hover { filter: brightness(1.15); }
-  .toolbar-hint { font-size: 0.78rem; color: #64748b; }
 
   .table-wrap { padding: 20px 28px; overflow-x: auto; }
   table {
@@ -66,52 +53,64 @@
     box-shadow: 0 1px 6px rgba(0,0,0,0.08); font-size: 0.85rem;
   }
   thead { background: #1a2f5e; color: white; }
-  thead th {
-    padding: 12px 14px; text-align: left; font-weight: 600;
-    font-size: 0.78rem; letter-spacing: 0.4px;
-  }
-  .th-no  { min-width: 36px; text-align: center; }
-  .th-car { min-width: 90px; white-space: nowrap; }
-  .th-col { min-width: 230px; }
-  .del-col-btn {
-    background: rgba(255,255,255,0.1); border: 1px solid rgba(255,255,255,0.25);
-    color: rgba(255,255,255,0.85); border-radius: 4px;
-    padding: 2px 7px; font-size: 0.68rem; cursor: pointer; margin-left: 6px;
-    vertical-align: middle; transition: background 0.15s;
-  }
-  .del-col-btn:hover { background: rgba(220,38,38,0.6); border-color: transparent; }
+  thead th { padding: 12px 14px; text-align: left; font-weight: 600; font-size: 0.78rem; letter-spacing: 0.4px; }
+  .th-no  { width: 42px; text-align: center; }
+  .th-car { width: 100px; white-space: nowrap; }
+  .th-fault { min-width: 280px; }
 
-  tbody tr { border-bottom: 1px solid #f1f5f9; }
+  tbody tr { border-bottom: 1px solid #f1f5f9; transition: background 0.2s; }
   tbody tr:last-child { border-bottom: none; }
-  tbody td { padding: 8px 10px; vertical-align: top; }
+  tbody td { padding: 8px 12px; vertical-align: top; }
   .td-no  { color: #94a3b8; font-size: 0.75rem; text-align: center; vertical-align: middle !important; }
-  .td-car { font-weight: 700; color: #1a2f5e; font-size: 0.88rem; font-family: monospace; white-space: nowrap; vertical-align: middle !important; }
+  .td-car { font-weight: 700; color: #1a2f5e; font-size: 0.9rem; font-family: monospace; white-space: nowrap; vertical-align: middle !important; }
 
-  .cell-wrap { display: flex; flex-direction: column; gap: 5px; }
+  /* Fault list inside each cell */
+  .fault-list { display: flex; flex-direction: column; gap: 6px; }
 
-  .fault-select {
-    border: 1px solid #e2e8f0; border-radius: 20px;
-    padding: 4px 10px; font-size: 0.75rem; font-weight: 600;
-    font-family: inherit; cursor: pointer; outline: none; width: 100%;
+  .fault-item {
+    display: flex; align-items: center; gap: 6px;
+    padding: 5px 6px; border-radius: 8px;
+    background: #f8fafc; border: 1px solid #e2e8f0;
+  }
+  .fault-item.is-new { border-color: #f97316; background: #fff7ed; }
+
+  .fi-select {
+    border: 1px solid #e2e8f0; border-radius: 16px;
+    padding: 3px 8px; font-size: 0.72rem; font-weight: 600;
+    font-family: inherit; cursor: pointer; outline: none;
+    white-space: nowrap; flex-shrink: 0;
     transition: border-color 0.15s, background 0.15s;
   }
-  .fault-select:hover { filter: brightness(0.97); }
-  .fault-select:focus { border-color: #2d4a8a; }
+  .fi-select:focus { border-color: #2d4a8a; }
   .f-done    { background: #dcfce7; color: #166534; border-color: #86efac; }
   .f-fault   { background: #fee2e2; color: #991b1b; border-color: #fca5a5; }
   .f-wip     { background: #fef3c7; color: #92400e; border-color: #fcd34d; }
   .f-pending { background: #f1f5f9; color: #64748b; border-color: #e2e8f0; }
 
-  .fault-desc {
-    border: 1px solid #e2e8f0; border-radius: 8px;
-    padding: 6px 8px; font-size: 0.78rem; font-family: inherit;
-    resize: vertical; width: 100%; min-height: 50px;
-    background: #f8fafc; color: #1a2332; transition: border-color 0.15s;
+  .fi-desc {
+    flex: 1; border: none; background: transparent;
+    font-size: 0.8rem; font-family: inherit; color: #1a2332; outline: none;
+    min-width: 0;
   }
-  .fault-desc:focus { border-color: #2d4a8a; background: white; outline: none; }
-  .fault-desc::placeholder { color: #cbd5e1; font-style: italic; }
+  .fi-desc::placeholder { color: #cbd5e1; font-style: italic; }
 
-  .pending-edit { border: 2px dashed #f97316 !important; box-shadow: 0 0 0 3px rgba(249,115,22,0.14); }
+  .fi-del-btn {
+    flex-shrink: 0; border: none; background: none;
+    color: #94a3b8; font-size: 0.9rem; cursor: pointer;
+    padding: 0 4px; line-height: 1; border-radius: 4px;
+    transition: color 0.15s, background 0.15s;
+  }
+  .fi-del-btn:hover { color: #dc2626; background: #fee2e2; }
+
+  .add-fault-btn {
+    align-self: flex-start; border: 1px dashed #94a3b8;
+    background: white; color: #64748b; border-radius: 8px;
+    padding: 4px 10px; font-size: 0.75rem; font-family: inherit;
+    cursor: pointer; transition: all 0.15s; margin-top: 2px;
+  }
+  .add-fault-btn:hover { border-color: #2d4a8a; color: #2d4a8a; background: #eff6ff; }
+
+  .no-faults { font-size: 0.75rem; color: #cbd5e1; font-style: italic; padding: 2px 0; }
 
   /* Save bar */
   .save-bar {
@@ -131,13 +130,10 @@
   .save-btn { background: #16a34a; color: white; margin-left: auto; }
   .save-btn:hover { filter: brightness(1.1); }
   .save-btn:active, .discard-btn:active { transform: scale(0.96); }
-  .discard-btn {
-    background: rgba(255,255,255,0.12); color: white;
-    border: 1px solid rgba(255,255,255,0.35);
-  }
+  .discard-btn { background: rgba(255,255,255,0.12); color: white; border: 1px solid rgba(255,255,255,0.35); }
   .discard-btn:hover { background: rgba(255,255,255,0.22); }
 
-  /* Modals */
+  /* Modal */
   .modal-overlay {
     position: fixed; inset: 0; z-index: 2000;
     background: rgba(0,0,0,0.45);
@@ -145,36 +141,24 @@
   }
   .modal {
     background: white; border-radius: 16px; padding: 28px 32px;
-    width: 440px; max-width: 100%;
+    width: 420px; max-width: 100%;
     box-shadow: 0 8px 32px rgba(0,0,0,0.22);
   }
   .modal h3 { font-size: 1.1rem; color: #1a2332; margin-bottom: 10px; }
-  .modal .modal-desc { font-size: 0.88rem; color: #475569; margin-bottom: 18px; line-height: 1.65; }
-  .modal input[type="text"] {
-    width: 100%; border: 1px solid #e2e8f0; border-radius: 8px;
-    padding: 10px 12px; font-size: 0.88rem; font-family: inherit;
-    outline: none; margin-bottom: 16px; transition: border-color 0.15s;
-  }
-  .modal input[type="text"]:focus { border-color: #2d4a8a; }
+  .modal .modal-desc { font-size: 0.88rem; color: #475569; margin-bottom: 20px; line-height: 1.65; }
   .modal-actions { display: flex; gap: 10px; justify-content: flex-end; }
   .btn-cancel {
     border: 1px solid #e2e8f0; background: white; color: #64748b;
     border-radius: 8px; padding: 8px 18px; font-size: 0.85rem;
-    font-family: inherit; cursor: pointer; transition: background 0.15s;
+    font-family: inherit; cursor: pointer;
   }
   .btn-cancel:hover { background: #f8fafc; }
   .btn-confirm {
     background: #16a34a; color: white; border: none;
     border-radius: 8px; padding: 8px 18px; font-size: 0.85rem;
-    font-weight: 700; font-family: inherit; cursor: pointer; transition: filter 0.15s;
+    font-weight: 700; font-family: inherit; cursor: pointer;
   }
   .btn-confirm:hover { filter: brightness(1.1); }
-  .btn-add {
-    background: #2d4a8a; color: white; border: none;
-    border-radius: 8px; padding: 8px 18px; font-size: 0.85rem;
-    font-weight: 700; font-family: inherit; cursor: pointer; transition: filter 0.15s;
-  }
-  .btn-add:hover { filter: brightness(1.1); }
   .warn-text { color: #dc2626; font-size: 0.8rem; }
 
   footer {
@@ -196,30 +180,24 @@
 
 <div class="summary-bar">
   <div class="stat-card s-total"><div class="num" id="statTotal">54</div><div class="lbl">總台數<br>Total</div></div>
-  <div class="stat-card s-done"><div class="num" id="statDone">54</div><div class="lbl">均完成<br>All Clear</div></div>
+  <div class="stat-card s-done"><div class="num" id="statDone">0</div><div class="lbl">無故障<br>All Clear</div></div>
   <div class="stat-card s-fault"><div class="num" id="statFault">0</div><div class="lbl">故障<br>Fault</div></div>
   <div class="stat-card s-wip"><div class="num" id="statWip">0</div><div class="lbl">維修中<br>Under Repair</div></div>
   <div class="stat-card s-pend"><div class="num" id="statPend">0</div><div class="lbl">待確認<br>Pending</div></div>
-  <div class="stat-card s-rate"><div class="num" id="statRate">100%</div><div class="lbl">正常率<br>Normal Rate</div></div>
 </div>
 
 <div class="progress-wrap">
-  <div class="progress-label" id="progressLabel">均完成台數 All Clear：54 / 54 units</div>
-  <div class="progress-track"><div class="progress-fill" id="progressFill" style="width:100%"></div></div>
-</div>
-
-<div class="toolbar">
-  <button class="add-col-btn" onclick="openAddCol()">＋ 新增欄位 Add Column</button>
-  <span class="toolbar-hint">可新增自訂故障描述欄位　Add custom fault description columns</span>
+  <div class="progress-label" id="progressLabel">無故障台數 All Clear：0 / 54 units</div>
+  <div class="progress-track"><div class="progress-fill" id="progressFill" style="width:0%"></div></div>
 </div>
 
 <div class="table-wrap">
   <table>
     <thead>
-      <tr id="theadRow">
+      <tr>
         <th class="th-no">#</th>
         <th class="th-car">車號<br><span style="font-weight:400;opacity:0.7;font-size:0.7rem;">Car No.</span></th>
-        <th class="th-col">故障描述<br><span style="font-weight:400;opacity:0.7;font-size:0.7rem;">Fault Description</span></th>
+        <th class="th-fault">故障描述<br><span style="font-weight:400;opacity:0.7;font-size:0.7rem;">Fault Description</span></th>
       </tr>
     </thead>
     <tbody id="tableBody"></tbody>
@@ -249,22 +227,6 @@
   </div>
 </div>
 
-<!-- 新增欄位 Modal -->
-<div class="modal-overlay" id="addColModal">
-  <div class="modal">
-    <h3>＋ 新增故障描述欄位 Add Column</h3>
-    <p class="modal-desc">請輸入新欄位的名稱（最多 30 字）：</p>
-    <input type="text" id="newColName"
-           placeholder="例如：電氣故障、車門故障、空調故障…"
-           onkeydown="if(event.key==='Enter')confirmAddColumn()"
-           maxlength="30" />
-    <div class="modal-actions">
-      <button class="btn-cancel" onclick="closeAddColModal()">✕ 取消 Cancel</button>
-      <button class="btn-add" onclick="confirmAddColumn()">＋ 新增 Add</button>
-    </div>
-  </div>
-</div>
-
 <footer>
   CN301-370 Fault Tracking System　｜　CN301-370 故障追蹤系統　｜
   Last Updated 最後更新：<span id="footerUpdated">-</span>
@@ -276,230 +238,221 @@ const TOTAL = 54;
 const cars = Array.from({length: 70}, (_, i) => `CN${301 + i}`).filter(c => !EXCLUDED.has(c));
 
 const STATUS_OPTS = [
-  { value: "均完成", label: "✓ 均完成 All Clear",       cls: "f-done"    },
-  { value: "故障",   label: "✗ 故障 Fault",             cls: "f-fault"   },
-  { value: "維修中", label: "🔧 維修中 Under Repair",    cls: "f-wip"     },
-  { value: "待確認", label: "⏳ 待確認 Pending Check",   cls: "f-pending" },
+  { value: "均完成", label: "✓ 均完成 All Clear",    cls: "f-done"    },
+  { value: "故障",   label: "✗ 故障 Fault",          cls: "f-fault"   },
+  { value: "維修中", label: "🔧 維修中 Under Repair", cls: "f-wip"     },
+  { value: "待確認", label: "⏳ 待確認 Pending",      cls: "f-pending" },
 ];
+const STATUS_CLS = Object.fromEntries(STATUS_OPTS.map(o => [o.value, o.cls]));
 
-let customColumns  = [];  // [{ id, name }]
-let cloudData      = {};  // { [car]: { [colId_status|colId_desc]: val } }
-let pendingChanges = {};  // { "car__colId__field": val }
-let newPendingCols = [];  // [{ id, name }] — 尚未送出的新欄位
-
-function getVal(car, colId, field) {
-  const pKey = `${car}__${colId}__${field}`;
-  if (pendingChanges[pKey] !== undefined) return pendingChanges[pKey];
-  const cKey = `${colId}_${field}`;
-  return (cloudData[car] && cloudData[car][cKey] !== undefined)
-    ? cloudData[car][cKey]
-    : (field === "status" ? "均完成" : "");
-}
+// faultList[car] = [{ id, status, desc, _new?, _dirty?, _del? }]
+const faultList = {};
+cars.forEach(car => { faultList[car] = []; });
 
 function escH(s) {
-  return String(s)
-    .replace(/&/g, "&amp;").replace(/</g, "&lt;")
-    .replace(/>/g, "&gt;").replace(/"/g, "&quot;");
+  return String(s || "").replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;").replace(/"/g,"&quot;");
+}
+function pad(n) { return String(n).padStart(2,"0"); }
+
+// ── 渲染 ──
+function renderAll() {
+  const tbody = document.getElementById("tableBody");
+  tbody.innerHTML = cars.map((car, idx) => {
+    return `<tr id="row_${car}">
+      <td class="td-no">${idx + 1}</td>
+      <td class="td-car">${car}</td>
+      <td id="cell_${car}"></td>
+    </tr>`;
+  }).join("");
+  cars.forEach(car => { renderCarCell(car); updateRowBg(car); });
+  updateStats();
+  const now = new Date();
+  document.getElementById("headerDate").textContent =
+    `📅 ${now.getFullYear()}-${pad(now.getMonth()+1)}-${pad(now.getDate())}`;
+  document.getElementById("footerUpdated").textContent =
+    `${now.getFullYear()}-${pad(now.getMonth()+1)}-${pad(now.getDate())}`;
 }
 
-function pad(n) { return String(n).padStart(2, "0"); }
+function renderCarCell(car) {
+  const cell = document.getElementById(`cell_${car}`);
+  if (!cell) return;
+  const active = faultList[car].filter(f => !f._del);
+  const items = active.map(f => {
+    const cls = STATUS_CLS[f.status] || "f-pending";
+    const opts = STATUS_OPTS.map(o =>
+      `<option value="${o.value}"${f.status===o.value?" selected":""}>${escH(o.label)}</option>`
+    ).join("");
+    const newCls = f._new ? " is-new" : "";
+    return `<div class="fault-item${newCls}" id="fi_${car}_${f.id}">
+      <select class="fi-select ${cls}" onchange="updateFaultStatus('${car}','${f.id}',this)">${opts}</select>
+      <input type="text" class="fi-desc" value="${escH(f.desc)}"
+             placeholder="故障描述… Fault description"
+             oninput="updateFaultDesc('${car}','${f.id}',this.value)">
+      <button class="fi-del-btn" onclick="removeFault('${car}','${f.id}')" title="刪除此筆">✕</button>
+    </div>`;
+  }).join("");
 
-function buildCell(car, colId, status, desc) {
-  const sCls  = STATUS_OPTS.find(o => o.value === status)?.cls || "f-pending";
-  const sPend = pendingChanges[`${car}__${colId}__status`] !== undefined ? " pending-edit" : "";
-  const dPend = pendingChanges[`${car}__${colId}__desc`]   !== undefined ? " pending-edit" : "";
-  const opts  = STATUS_OPTS.map(o =>
-    `<option value="${o.value}"${status === o.value ? " selected" : ""}>${escH(o.label)}</option>`
-  ).join("");
-  return `<div class="cell-wrap">
-    <select class="fault-select ${sCls}${sPend}"
-            onchange="onStatusChange('${car}','${colId}',this)">${opts}</select>
-    <textarea class="fault-desc${dPend}" rows="2"
-              placeholder="故障描述… Fault description"
-              oninput="onDescChange('${car}','${colId}',this)">${escH(desc)}</textarea>
+  const noFaults = active.length === 0
+    ? `<span class="no-faults">— 尚無故障記錄 No faults recorded</span>` : "";
+
+  cell.innerHTML = `<div class="fault-list">
+    ${noFaults}${items}
+    <button class="add-fault-btn" onclick="addFault('${car}')">＋ 新增故障 Add Fault</button>
   </div>`;
 }
 
-function render() {
-  // 更新動態表頭欄
-  const theadRow = document.getElementById("theadRow");
-  while (theadRow.children.length > 3) theadRow.removeChild(theadRow.lastChild);
-  customColumns.forEach(col => {
-    const th = document.createElement("th");
-    th.className = "th-col";
-    th.innerHTML = `${escH(col.name)}<br>
-      <span style="font-weight:400;opacity:0.7;font-size:0.7rem;">Fault Description</span>
-      <button class="del-col-btn" onclick="removeColumn('${escH(col.id)}')">✕ 刪除</button>`;
-    theadRow.appendChild(th);
-  });
-
-  // 更新表格主體
-  document.getElementById("tableBody").innerHTML = cars.map((car, idx) => {
-    const st = getVal(car, "main", "status");
-    const ds = getVal(car, "main", "desc");
-    let rowBg = "";
-    if      (st === "均完成") rowBg = "background:#f0fdf4;";
-    else if (st === "故障")   rowBg = "background:#fff1f2;";
-    else if (st === "維修中") rowBg = "background:#fffbeb;";
-    const customCells = customColumns.map(col =>
-      `<td>${buildCell(car, col.id, getVal(car, col.id, "status"), getVal(car, col.id, "desc"))}</td>`
-    ).join("");
-    return `<tr style="${rowBg}">
-      <td class="td-no">${idx + 1}</td>
-      <td class="td-car">${car}</td>
-      <td>${buildCell(car, "main", st, ds)}</td>
-      ${customCells}
-    </tr>`;
-  }).join("");
-
-  updateStats();
-
-  const now = new Date();
-  document.getElementById("headerDate").textContent =
-    `📅 ${now.getFullYear()}-${pad(now.getMonth() + 1)}-${pad(now.getDate())}`;
-  document.getElementById("footerUpdated").textContent =
-    `${now.getFullYear()}-${pad(now.getMonth() + 1)}-${pad(now.getDate())}`;
+function updateRowBg(car) {
+  const row = document.getElementById(`row_${car}`);
+  if (!row) return;
+  const active = faultList[car].filter(f => !f._del);
+  let bg = "";
+  if (active.length === 0 || active.every(f => f.status === "均完成")) {
+    bg = active.length > 0 ? "#f0fdf4" : "";
+  } else if (active.some(f => f.status === "故障"))    bg = "#fff1f2";
+  else if (active.some(f => f.status === "維修中"))    bg = "#fffbeb";
+  row.style.background = bg;
 }
 
 function updateStats() {
   let done = 0, fault = 0, wip = 0, pend = 0;
   cars.forEach(car => {
-    const st = getVal(car, "main", "status");
-    if      (st === "均完成") done++;
-    else if (st === "故障")   fault++;
-    else if (st === "維修中") wip++;
-    else                      pend++;
+    const active = faultList[car].filter(f => !f._del);
+    if (active.length === 0 || active.every(f => f.status === "均完成")) done++;
+    else if (active.some(f => f.status === "故障"))   fault++;
+    else if (active.some(f => f.status === "維修中"))  wip++;
+    else                                               pend++;
   });
   document.getElementById("statDone").textContent  = done;
   document.getElementById("statFault").textContent = fault;
   document.getElementById("statWip").textContent   = wip;
   document.getElementById("statPend").textContent  = pend;
   const rate = Math.round((done / TOTAL) * 100);
-  document.getElementById("statRate").textContent  = rate + "%";
   document.getElementById("progressFill").style.width = rate + "%";
   document.getElementById("progressLabel").textContent =
-    `均完成台數 All Clear：${done} / ${TOTAL} units`;
+    `無故障台數 All Clear：${done} / ${TOTAL} units`;
 }
 
-// ── 事件處理 ──
-function onStatusChange(car, colId, sel) {
-  const val = sel.value;
-  pendingChanges[`${car}__${colId}__status`] = val;
-  const cls = STATUS_OPTS.find(o => o.value === val)?.cls || "f-pending";
-  sel.className = `fault-select ${cls} pending-edit`;
-  if (colId === "main") {
-    const row = sel.closest("tr");
-    row.style.background =
-      val === "均完成" ? "#f0fdf4" :
-      val === "故障"   ? "#fff1f2" :
-      val === "維修中" ? "#fffbeb" : "";
-    updateStats();
+// ── 操作 ──
+function addFault(car) {
+  const id = "f" + Date.now() + Math.random().toString(36).slice(2,5);
+  faultList[car].push({ id, status: "待確認", desc: "", _new: true });
+  renderCarCell(car);
+  updateRowBg(car);
+  updateSaveBar();
+  updateStats();
+  setTimeout(() => {
+    const inp = document.querySelector(`#fi_${car}_${id} .fi-desc`);
+    if (inp) inp.focus();
+  }, 50);
+}
+
+function removeFault(car, id) {
+  const f = faultList[car].find(f => f.id === id);
+  if (!f) return;
+  if (f._new) {
+    faultList[car] = faultList[car].filter(f => f.id !== id);
+  } else {
+    f._del = true;
   }
+  renderCarCell(car);
+  updateRowBg(car);
   updateSaveBar();
+  updateStats();
 }
 
-function onDescChange(car, colId, ta) {
-  pendingChanges[`${car}__${colId}__desc`] = ta.value;
-  ta.classList.add("pending-edit");
+function updateFaultStatus(car, id, sel) {
+  const val = sel.value;
+  const f = faultList[car].find(f => f.id === id);
+  if (!f) return;
+  f.status = val;
+  if (!f._new) f._dirty = true;
+  sel.className = `fi-select ${STATUS_CLS[val] || "f-pending"}`;
+  updateRowBg(car);
   updateSaveBar();
+  updateStats();
 }
 
-// ── 欄位管理 ──
-function openAddCol() {
-  document.getElementById("newColName").value = "";
-  document.getElementById("addColModal").style.display = "flex";
-  setTimeout(() => document.getElementById("newColName").focus(), 60);
-}
-function closeAddColModal() { document.getElementById("addColModal").style.display = "none"; }
-
-function confirmAddColumn() {
-  const name = document.getElementById("newColName").value.trim();
-  if (!name) { document.getElementById("newColName").focus(); return; }
-  const col = { id: "col_" + Date.now(), name };
-  customColumns.push(col);
-  newPendingCols.push(col);
-  closeAddColModal();
+function updateFaultDesc(car, id, val) {
+  const f = faultList[car].find(f => f.id === id);
+  if (!f) return;
+  f.desc = val;
+  if (!f._new) f._dirty = true;
   updateSaveBar();
-  render();
-}
-
-function removeColumn(colId) {
-  if (!confirm("確定要刪除此欄位及所有相關資料嗎？\nDelete this column and all its data?")) return;
-  customColumns  = customColumns.filter(c => c.id !== colId);
-  newPendingCols = newPendingCols.filter(c => c.id !== colId);
-  Object.keys(pendingChanges).forEach(k => { if (k.includes(`__${colId}__`)) delete pendingChanges[k]; });
-  updateSaveBar();
-  render();
 }
 
 // ── 儲存列 ──
-function updateSaveBar() {
-  const count = Object.keys(pendingChanges).length + newPendingCols.length;
-  document.getElementById("saveBarCount").textContent = count;
-  document.getElementById("saveBar").style.display = count > 0 ? "flex" : "none";
-  if (count > 0) {
-    document.getElementById("saveBarText").innerHTML =
-      `📝 你有 <strong>${count}</strong> 項變更尚未儲存　Unsaved changes`;
-  }
+function countPending() {
+  let count = 0;
+  cars.forEach(car => {
+    faultList[car].forEach(f => { if (f._new || f._dirty || f._del) count++; });
+  });
+  return count;
 }
 
-// ── 儲存確認 ──
+function updateSaveBar() {
+  const count = countPending();
+  document.getElementById("saveBarCount").textContent = count;
+  document.getElementById("saveBarText").innerHTML =
+    `📝 你有 <strong>${count}</strong> 項變更尚未儲存　Unsaved changes`;
+  document.getElementById("saveBar").style.display = count > 0 ? "flex" : "none";
+}
+
+function discardChanges() {
+  // 移除 _new，還原 _del / _dirty
+  cars.forEach(car => {
+    faultList[car] = faultList[car]
+      .filter(f => !f._new)
+      .map(f => { delete f._dirty; delete f._del; return f; });
+  });
+  document.getElementById("saveBar").style.display = "none";
+  cars.forEach(car => { renderCarCell(car); updateRowBg(car); });
+  updateStats();
+}
+
 function openSaveConfirm() {
-  const count = Object.keys(pendingChanges).length + newPendingCols.length;
-  document.getElementById("modalCount").textContent = count;
+  document.getElementById("modalCount").textContent = countPending();
   document.getElementById("saveModal").style.display = "flex";
 }
 function closeSaveModal() { document.getElementById("saveModal").style.display = "none"; }
 
 function commitChanges() {
   closeSaveModal();
-  const textEl = document.getElementById("saveBarText");
-  textEl.innerHTML = "⏳ 儲存中… Saving…";
-
+  document.getElementById("saveBarText").innerHTML = "⏳ 儲存中… Saving…";
   const batch = db.batch();
-  const now   = new Date().toISOString();
+  const now = new Date().toISOString();
+  const carsChanged = new Set();
 
-  // 儲存欄位定義
-  batch.set(
-    db.collection("config").doc("customColumns"),
-    { cols: customColumns.map(c => ({ id: c.id, name: c.name })), updatedAt: now }
-  );
-
-  // 依車號分組，批次寫入
-  const grouped = {};
-  Object.entries(pendingChanges).forEach(([key, val]) => {
-    const [car, colId, field] = key.split("__");
-    if (!grouped[car]) grouped[car] = {};
-    grouped[car][`${colId}_${field}`] = val;
-  });
-  Object.entries(grouped).forEach(([car, fields]) => {
-    batch.set(db.collection("faultData").doc(car), { ...fields, updatedAt: now }, { merge: true });
+  cars.forEach(car => {
+    const hasChange = faultList[car].some(f => f._new || f._dirty || f._del);
+    if (!hasChange) return;
+    carsChanged.add(car);
+    const ref = db.collection("faultData").doc(car);
+    const data = { updatedAt: now };
+    faultList[car].filter(f => !f._del).forEach(f => {
+      data[f.id] = { status: f.status, desc: f.desc };
+    });
+    faultList[car].filter(f => f._del && !f._new).forEach(f => {
+      data[f.id] = firebase.firestore.FieldValue.delete();
+    });
+    batch.set(ref, data, { merge: true });
   });
 
   batch.commit().then(() => {
-    Object.entries(grouped).forEach(([car, fields]) => {
-      if (!cloudData[car]) cloudData[car] = {};
-      Object.assign(cloudData[car], fields);
+    carsChanged.forEach(car => {
+      faultList[car] = faultList[car]
+        .filter(f => !f._del)
+        .map(f => { delete f._new; delete f._dirty; return f; });
+      renderCarCell(car);
     });
-    Object.keys(pendingChanges).forEach(k => delete pendingChanges[k]);
-    newPendingCols.length = 0;
-    textEl.innerHTML = "✅ 已成功儲存並同步！Saved &amp; synced!";
-    setTimeout(() => { document.getElementById("saveBar").style.display = "none"; render(); }, 1800);
+    document.getElementById("saveBarText").innerHTML = "✅ 已成功儲存並同步！Saved &amp; synced!";
+    setTimeout(() => { document.getElementById("saveBar").style.display = "none"; }, 1800);
   }).catch(err => {
-    textEl.innerHTML = "❌ 儲存失敗，請重試　Save failed — please retry";
+    document.getElementById("saveBarText").innerHTML = "❌ 儲存失敗，請重試　Save failed";
     console.warn("batch commit failed", err);
   });
 }
 
-function discardChanges() {
-  Object.keys(pendingChanges).forEach(k => delete pendingChanges[k]);
-  customColumns  = customColumns.filter(c => !newPendingCols.find(p => p.id === c.id));
-  newPendingCols.length = 0;
-  document.getElementById("saveBar").style.display = "none";
-  render();
-}
-
-render();
+renderAll();
 </script>
 
 <!-- Firebase SDK -->
@@ -516,21 +469,31 @@ firebase.initializeApp({
 });
 const db = firebase.firestore();
 
-// 即時監聽自訂欄位定義
-db.collection("config").doc("customColumns").onSnapshot(doc => {
-  if (doc.exists) {
-    const saved = (doc.data().cols || []).filter(c => c.id && c.name);
-    const localNewIds = new Set(newPendingCols.map(c => c.id));
-    customColumns = [...saved.filter(c => !localNewIds.has(c.id)), ...newPendingCols];
-  }
-  render();
-}, err => console.warn("config snapshot error", err));
-
-// 即時監聽故障資料
 db.collection("faultData").onSnapshot(snap => {
-  snap.forEach(doc => { cloudData[doc.id] = doc.data(); });
-  render();
-}, err => console.warn("faultData snapshot error", err));
+  snap.forEach(doc => {
+    const car = doc.id;
+    if (!faultList[car]) return; // 非此系統的車號，略過
+    const data = doc.data();
+    const localIds = new Set(faultList[car].map(f => f.id));
+
+    Object.entries(data).forEach(([id, val]) => {
+      if (id === "updatedAt" || typeof val !== "object") return;
+      if (localIds.has(id)) {
+        // 已存在：只更新沒有本機修改的項目
+        const local = faultList[car].find(f => f.id === id);
+        if (local && !local._dirty && !local._new && !local._del) {
+          local.status = val.status || "待確認";
+          local.desc   = val.desc   || "";
+        }
+      } else {
+        // 雲端新增的項目，加入本機
+        faultList[car].push({ id, status: val.status || "待確認", desc: val.desc || "" });
+      }
+    });
+  });
+  cars.forEach(car => { renderCarCell(car); updateRowBg(car); });
+  updateStats();
+}, err => console.warn("faultData error", err));
 </script>
 </body>
 </html>
