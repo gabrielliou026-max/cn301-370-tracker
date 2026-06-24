@@ -3,293 +3,183 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>CN301-370 DC Demotion Progress Tracker</title>
+<title>CN301-370 故障追蹤系統</title>
 <style>
   :root { color-scheme: light; }
   * { box-sizing: border-box; margin: 0; padding: 0; }
-  body { font-family: 'Segoe UI', Arial, sans-serif; background: #f0f4f8; color: #1a2332; padding-bottom: 64px; }
-
-  .save-bar {
-    position: fixed;
-    bottom: 0; left: 0; right: 0;
-    z-index: 1000;
-    background: linear-gradient(135deg, #1a2f5e 0%, #2d4a8a 100%);
-    color: white;
-    padding: 12px 28px;
-    display: none;
-    align-items: center;
-    gap: 16px;
-    flex-wrap: wrap;
-    box-shadow: 0 -2px 14px rgba(0,0,0,0.3);
-  }
-  .save-bar .save-bar-text { font-size: 0.85rem; }
-  .save-bar .save-bar-text strong { color: #fbbf24; font-size: 1.05rem; }
-  .save-bar .save-btn, .save-bar .discard-btn {
-    border: none;
-    border-radius: 8px;
-    padding: 8px 18px;
-    font-size: 0.82rem;
-    font-weight: 700;
-    font-family: inherit;
-    cursor: pointer;
-    transition: filter 0.15s, transform 0.1s;
-  }
-  .save-bar .save-btn { background: #16a34a; color: white; margin-left: auto; }
-  .save-bar .save-btn:hover { filter: brightness(1.1); }
-  .save-bar .discard-btn { background: rgba(255,255,255,0.12); color: white; border: 1px solid rgba(255,255,255,0.35); }
-  .save-bar .discard-btn:hover { background: rgba(255,255,255,0.22); }
-  .save-bar .save-btn:active, .save-bar .discard-btn:active { transform: scale(0.96); }
-
-  select.pending-edit {
-    border: 2px dashed #f97316 !important;
-    box-shadow: 0 0 0 3px rgba(249,115,22,0.18);
-  }
+  body { font-family: 'Segoe UI', Arial, sans-serif; background: #f0f4f8; color: #1a2332; padding-bottom: 72px; }
 
   header {
     background: linear-gradient(135deg, #1a2f5e 0%, #2d4a8a 100%);
-    color: white;
-    padding: 18px 28px;
-    display: flex;
-    align-items: center;
-    gap: 16px;
+    color: white; padding: 18px 28px;
+    display: flex; align-items: center; gap: 16px;
     box-shadow: 0 2px 8px rgba(0,0,0,0.25);
   }
   header .title-block h1 { font-size: 1.15rem; font-weight: 700; letter-spacing: 0.5px; }
-  header .title-block h1 span.en { font-size: 0.8rem; font-weight: 400; opacity: 0.8; margin-left: 8px; }
+  header .title-block h1 .en { font-size: 0.8rem; font-weight: 400; opacity: 0.8; margin-left: 8px; }
   header .title-block p { font-size: 0.78rem; opacity: 0.75; margin-top: 3px; }
   header .badge {
-    margin-left: auto;
-    background: rgba(255,255,255,0.15);
-    border: 1px solid rgba(255,255,255,0.3);
-    border-radius: 20px;
-    padding: 6px 14px;
-    font-size: 0.8rem;
-    white-space: nowrap;
+    margin-left: auto; background: rgba(255,255,255,0.15);
+    border: 1px solid rgba(255,255,255,0.3); border-radius: 20px;
+    padding: 6px 14px; font-size: 0.8rem; white-space: nowrap;
   }
 
   .summary-bar {
-    display: flex;
-    gap: 14px;
-    padding: 16px 28px;
-    background: white;
-    border-bottom: 1px solid #dde3ed;
-    flex-wrap: wrap;
+    display: flex; gap: 14px; padding: 16px 28px;
+    background: white; border-bottom: 1px solid #dde3ed; flex-wrap: wrap;
   }
   .stat-card {
-    flex: 1;
-    min-width: 110px;
-    background: #f8fafc;
-    border-radius: 10px;
-    border: 1px solid #e2e8f0;
-    padding: 12px 16px;
-    text-align: center;
+    flex: 1; min-width: 100px; background: #f8fafc;
+    border-radius: 10px; border: 1px solid #e2e8f0;
+    padding: 12px 16px; text-align: center;
   }
-  .stat-card .num { font-size: 1.8rem; font-weight: 800; line-height: 1; }
+  .stat-card .num { font-size: 1.75rem; font-weight: 800; line-height: 1; }
   .stat-card .lbl { font-size: 0.7rem; color: #64748b; margin-top: 4px; letter-spacing: 0.3px; line-height: 1.4; }
-  .stat-card.total .num { color: #1a2f5e; }
-  .stat-card.done .num { color: #16a34a; }
-  .stat-card.wip .num { color: #d97706; }
-  .stat-card.pending .num { color: #94a3b8; }
-  .stat-card.rate .num { font-size: 1.4rem; color: #2d4a8a; }
+  .s-total .num { color: #1a2f5e; }
+  .s-done  .num { color: #16a34a; }
+  .s-fault .num { color: #dc2626; }
+  .s-wip   .num { color: #d97706; }
+  .s-pend  .num { color: #94a3b8; }
+  .s-rate  .num { font-size: 1.35rem; color: #2d4a8a; }
 
-  .progress-wrap {
-    padding: 0 28px 14px;
-    background: white;
-    border-bottom: 1px solid #dde3ed;
-  }
-  .progress-track {
-    height: 10px;
-    background: #e2e8f0;
-    border-radius: 6px;
-    overflow: hidden;
-    margin-top: 2px;
-  }
-  .progress-fill {
-    height: 100%;
-    background: linear-gradient(90deg, #16a34a, #22c55e);
-    border-radius: 6px;
-    transition: width 0.5s ease;
-  }
+  .progress-wrap { padding: 0 28px 14px; background: white; border-bottom: 1px solid #dde3ed; }
+  .progress-track { height: 10px; background: #e2e8f0; border-radius: 6px; overflow: hidden; margin-top: 2px; }
+  .progress-fill { height: 100%; background: linear-gradient(90deg, #16a34a, #22c55e); border-radius: 6px; transition: width 0.5s ease; }
   .progress-label { font-size: 0.75rem; color: #64748b; margin-bottom: 4px; }
 
-  .wip-banner {
-    padding: 10px 28px;
-    background: linear-gradient(135deg, #fffbeb, #fef3c7);
-    border-bottom: 2px solid #fbbf24;
-    display: flex;
-    align-items: center;
-    gap: 10px;
-    flex-wrap: wrap;
+  .toolbar {
+    padding: 12px 28px; background: white; border-bottom: 1px solid #dde3ed;
+    display: flex; align-items: center; gap: 12px; flex-wrap: wrap;
   }
-  .wip-banner .wip-label {
-    font-size: 0.8rem;
-    font-weight: 700;
-    color: #92400e;
-    white-space: nowrap;
+  .add-col-btn {
+    background: #2d4a8a; color: white; border: none; border-radius: 8px;
+    padding: 8px 18px; font-size: 0.82rem; font-weight: 600;
+    cursor: pointer; transition: filter 0.15s; white-space: nowrap;
   }
-  .wip-banner .wip-cars {
-    display: flex;
-    gap: 6px;
-    flex-wrap: wrap;
-  }
-  .wip-car-tag {
-    background: #d97706;
-    color: white;
-    border-radius: 16px;
-    padding: 3px 10px;
-    font-size: 0.8rem;
-    font-weight: 700;
-    font-family: monospace;
-    letter-spacing: 0.3px;
-  }
-  .wip-banner .wip-date {
-    margin-left: auto;
-    font-size: 0.75rem;
-    color: #92400e;
-    opacity: 0.75;
-    white-space: nowrap;
-  }
-
-  .updated-info {
-    padding: 8px 28px;
-    background: #fffbeb;
-    border-bottom: 1px solid #fde68a;
-    font-size: 0.78rem;
-    color: #92400e;
-    display: flex;
-    align-items: center;
-    gap: 6px;
-  }
+  .add-col-btn:hover { filter: brightness(1.15); }
+  .toolbar-hint { font-size: 0.78rem; color: #64748b; }
 
   .table-wrap { padding: 20px 28px; overflow-x: auto; }
   table {
-    width: 100%;
-    border-collapse: collapse;
-    background: white;
-    border-radius: 12px;
-    overflow: hidden;
-    box-shadow: 0 1px 6px rgba(0,0,0,0.08);
-    font-size: 0.85rem;
+    width: 100%; border-collapse: collapse; background: white;
+    border-radius: 12px; overflow: hidden;
+    box-shadow: 0 1px 6px rgba(0,0,0,0.08); font-size: 0.85rem;
   }
   thead { background: #1a2f5e; color: white; }
   thead th {
-    padding: 12px 14px;
-    text-align: left;
-    font-weight: 600;
-    font-size: 0.78rem;
-    letter-spacing: 0.4px;
-    white-space: nowrap;
+    padding: 12px 14px; text-align: left; font-weight: 600;
+    font-size: 0.78rem; letter-spacing: 0.4px;
   }
-  tbody tr { border-bottom: 1px solid #f1f5f9; transition: background 0.15s; }
+  .th-no  { min-width: 36px; text-align: center; }
+  .th-car { min-width: 90px; white-space: nowrap; }
+  .th-col { min-width: 230px; }
+  .del-col-btn {
+    background: rgba(255,255,255,0.1); border: 1px solid rgba(255,255,255,0.25);
+    color: rgba(255,255,255,0.85); border-radius: 4px;
+    padding: 2px 7px; font-size: 0.68rem; cursor: pointer; margin-left: 6px;
+    vertical-align: middle; transition: background 0.15s;
+  }
+  .del-col-btn:hover { background: rgba(220,38,38,0.6); border-color: transparent; }
+
+  tbody tr { border-bottom: 1px solid #f1f5f9; }
   tbody tr:last-child { border-bottom: none; }
-  tbody tr:hover { background: #f8fafc; }
-  tbody td { padding: 9px 14px; vertical-align: middle; }
+  tbody td { padding: 8px 10px; vertical-align: top; }
+  .td-no  { color: #94a3b8; font-size: 0.75rem; text-align: center; vertical-align: middle !important; }
+  .td-car { font-weight: 700; color: #1a2f5e; font-size: 0.88rem; font-family: monospace; white-space: nowrap; vertical-align: middle !important; }
 
-  td.car-no { font-weight: 700; color: #1a2f5e; font-size: 0.88rem; font-family: monospace; }
+  .cell-wrap { display: flex; flex-direction: column; gap: 5px; }
 
-  .badge-status {
-    display: inline-block;
-    padding: 3px 10px;
-    border-radius: 20px;
-    font-size: 0.75rem;
-    font-weight: 600;
-    white-space: nowrap;
-  }
-  .s-complete   { background: #dcfce7; color: #166534; }
-  .s-wip        { background: #fef3c7; color: #92400e; }
-  .s-pending    { background: #f1f5f9; color: #64748b; }
-  .s-dc-done    { background: #dbeafe; color: #1e40af; }
-  .s-dte-pending{ background: #fce7f3; color: #9d174d; font-size: 0.72rem; }
-  .s-incomplete { background: #fee2e2; color: #991b1b; }
-  .ld-incomplete { background: #ef4444; }
-
-  td.note { color: #64748b; font-size: 0.8rem; max-width: 200px; }
-  td.date { white-space: nowrap; font-size: 0.82rem; }
-  td.after-status { font-size: 0.82rem; }
-  td.person { font-size: 0.82rem; }
-
-  .mo-select {
-    border: 1px solid #e2e8f0;
-    border-radius: 8px;
-    padding: 4px 8px;
-    font-size: 0.78rem;
-    font-family: inherit;
-    background: #f8fafc;
-    color: #1a2332;
-    cursor: pointer;
-    outline: none;
+  .fault-select {
+    border: 1px solid #e2e8f0; border-radius: 20px;
+    padding: 4px 10px; font-size: 0.75rem; font-weight: 600;
+    font-family: inherit; cursor: pointer; outline: none; width: 100%;
     transition: border-color 0.15s, background 0.15s;
-    min-width: 120px;
   }
-  .mo-select:hover { border-color: #94a3b8; }
-  .mo-select:focus { border-color: #2d4a8a; background: white; }
-  .mo-select.mo-done    { background: #dcfce7; color: #166534; border-color: #86efac; }
-  .mo-select.mo-wip     { background: #fef3c7; color: #92400e; border-color: #fcd34d; }
-  .mo-select.mo-pending { background: #f1f5f9; color: #64748b; border-color: #e2e8f0; }
-  .mo-select.mo-na      { background: #f1f5f9; color: #94a3b8; border-color: #e2e8f0; }
+  .fault-select:hover { filter: brightness(0.97); }
+  .fault-select:focus { border-color: #2d4a8a; }
+  .f-done    { background: #dcfce7; color: #166534; border-color: #86efac; }
+  .f-fault   { background: #fee2e2; color: #991b1b; border-color: #fca5a5; }
+  .f-wip     { background: #fef3c7; color: #92400e; border-color: #fcd34d; }
+  .f-pending { background: #f1f5f9; color: #64748b; border-color: #e2e8f0; }
 
-  .radio-select {
-    border: 1px solid #e2e8f0;
-    border-radius: 8px;
-    padding: 4px 8px;
-    font-size: 0.78rem;
-    font-family: inherit;
-    background: #f8fafc;
-    color: #1a2332;
-    cursor: pointer;
-    outline: none;
-    transition: border-color 0.15s, background 0.15s;
-    min-width: 120px;
+  .fault-desc {
+    border: 1px solid #e2e8f0; border-radius: 8px;
+    padding: 6px 8px; font-size: 0.78rem; font-family: inherit;
+    resize: vertical; width: 100%; min-height: 50px;
+    background: #f8fafc; color: #1a2332; transition: border-color 0.15s;
   }
-  .radio-select:hover { border-color: #94a3b8; }
-  .radio-select:focus { border-color: #2d4a8a; background: white; }
-  .radio-select.radio-done    { background: #dcfce7; color: #166534; border-color: #86efac; }
-  .radio-select.radio-wip     { background: #e0e7ff; color: #3730a3; border-color: #a5b4fc; }
-  .radio-select.radio-pending { background: #f1f5f9; color: #64748b; border-color: #e2e8f0; }
-  .radio-select.radio-na      { background: #f1f5f9; color: #94a3b8; border-color: #e2e8f0; }
+  .fault-desc:focus { border-color: #2d4a8a; background: white; outline: none; }
+  .fault-desc::placeholder { color: #cbd5e1; font-style: italic; }
 
-  .ds-select, .dte-select {
-    border: 1px solid #e2e8f0;
-    border-radius: 20px;
-    padding: 3px 10px;
-    font-size: 0.75rem;
-    font-weight: 600;
-    font-family: inherit;
-    cursor: pointer;
-    outline: none;
-    transition: border-color 0.15s, background 0.15s;
-    white-space: nowrap;
-  }
-  .ds-select:hover, .dte-select:hover { filter: brightness(0.96); }
-  .ds-select:focus, .dte-select:focus { border-color: #2d4a8a; }
-  .ds-select.ds-done       { background: #dcfce7; color: #166534; border-color: #86efac; }
-  .ds-select.ds-wip        { background: #fef3c7; color: #92400e; border-color: #fcd34d; }
-  .ds-select.ds-pending    { background: #f1f5f9; color: #64748b; border-color: #e2e8f0; }
-  .ds-select.ds-incomplete { background: #fee2e2; color: #991b1b; border-color: #fca5a5; }
-  .dte-select.dte-done     { background: #dcfce7; color: #166534; border-color: #86efac; }
-  .dte-select.dte-pending  { background: #fce7f3; color: #9d174d; border-color: #fbcfe8; }
-  .dte-select.dte-na       { background: #f1f5f9; color: #94a3b8; border-color: #e2e8f0; }
+  .pending-edit { border: 2px dashed #f97316 !important; box-shadow: 0 0 0 3px rgba(249,115,22,0.14); }
 
-  .legend {
-    display: flex;
-    gap: 16px;
-    padding: 0 28px 20px;
-    flex-wrap: wrap;
+  /* Save bar */
+  .save-bar {
+    position: fixed; bottom: 0; left: 0; right: 0; z-index: 1000;
+    background: linear-gradient(135deg, #1a2f5e, #2d4a8a);
+    color: white; padding: 12px 28px;
+    display: none; align-items: center; gap: 16px; flex-wrap: wrap;
+    box-shadow: 0 -2px 14px rgba(0,0,0,0.3);
   }
-  .legend-item { display: flex; align-items: center; gap: 6px; font-size: 0.78rem; color: #64748b; }
-  .legend-dot { width: 10px; height: 10px; border-radius: 50%; }
-  .ld-done    { background: #16a34a; }
-  .ld-wip     { background: #d97706; }
-  .ld-pend    { background: #cbd5e1; }
-  .ld-dc-done { background: #3b82f6; }
+  .save-bar-text { font-size: 0.85rem; }
+  .save-bar-text strong { color: #fbbf24; font-size: 1.05rem; }
+  .save-btn, .discard-btn {
+    border: none; border-radius: 8px; padding: 8px 18px;
+    font-size: 0.82rem; font-weight: 700; font-family: inherit;
+    cursor: pointer; transition: filter 0.15s, transform 0.1s;
+  }
+  .save-btn { background: #16a34a; color: white; margin-left: auto; }
+  .save-btn:hover { filter: brightness(1.1); }
+  .save-btn:active, .discard-btn:active { transform: scale(0.96); }
+  .discard-btn {
+    background: rgba(255,255,255,0.12); color: white;
+    border: 1px solid rgba(255,255,255,0.35);
+  }
+  .discard-btn:hover { background: rgba(255,255,255,0.22); }
+
+  /* Modals */
+  .modal-overlay {
+    position: fixed; inset: 0; z-index: 2000;
+    background: rgba(0,0,0,0.45);
+    display: none; align-items: center; justify-content: center; padding: 20px;
+  }
+  .modal {
+    background: white; border-radius: 16px; padding: 28px 32px;
+    width: 440px; max-width: 100%;
+    box-shadow: 0 8px 32px rgba(0,0,0,0.22);
+  }
+  .modal h3 { font-size: 1.1rem; color: #1a2332; margin-bottom: 10px; }
+  .modal .modal-desc { font-size: 0.88rem; color: #475569; margin-bottom: 18px; line-height: 1.65; }
+  .modal input[type="text"] {
+    width: 100%; border: 1px solid #e2e8f0; border-radius: 8px;
+    padding: 10px 12px; font-size: 0.88rem; font-family: inherit;
+    outline: none; margin-bottom: 16px; transition: border-color 0.15s;
+  }
+  .modal input[type="text"]:focus { border-color: #2d4a8a; }
+  .modal-actions { display: flex; gap: 10px; justify-content: flex-end; }
+  .btn-cancel {
+    border: 1px solid #e2e8f0; background: white; color: #64748b;
+    border-radius: 8px; padding: 8px 18px; font-size: 0.85rem;
+    font-family: inherit; cursor: pointer; transition: background 0.15s;
+  }
+  .btn-cancel:hover { background: #f8fafc; }
+  .btn-confirm {
+    background: #16a34a; color: white; border: none;
+    border-radius: 8px; padding: 8px 18px; font-size: 0.85rem;
+    font-weight: 700; font-family: inherit; cursor: pointer; transition: filter 0.15s;
+  }
+  .btn-confirm:hover { filter: brightness(1.1); }
+  .btn-add {
+    background: #2d4a8a; color: white; border: none;
+    border-radius: 8px; padding: 8px 18px; font-size: 0.85rem;
+    font-weight: 700; font-family: inherit; cursor: pointer; transition: filter 0.15s;
+  }
+  .btn-add:hover { filter: brightness(1.1); }
+  .warn-text { color: #dc2626; font-size: 0.8rem; }
 
   footer {
-    text-align: center;
-    padding: 14px;
-    font-size: 0.72rem;
-    color: #94a3b8;
-    border-top: 1px solid #e2e8f0;
-    background: white;
+    text-align: center; padding: 14px; font-size: 0.72rem; color: #94a3b8;
+    border-top: 1px solid #e2e8f0; background: white;
   }
 </style>
 </head>
@@ -298,363 +188,313 @@
 <header>
   <div style="font-size:2rem;">🚃</div>
   <div class="title-block">
-    <h1>CN301-370 DC降級作業進度追蹤 <span class="en">DC Demotion Progress Tracker</span></h1>
-    <p>作業單位 Unit：Communications Maintenance　｜　目標 Target：54 units</p>
+    <h1>CN301-370 故障追蹤系統 <span class="en">Fault Tracking System</span></h1>
+    <p>作業單位 Unit：Communications Maintenance　｜　車廂數量 Total：54 units</p>
   </div>
   <div class="badge" id="headerDate">載入中…</div>
 </header>
 
 <div class="summary-bar">
-  <div class="stat-card total"><div class="num" id="statTotal">54</div><div class="lbl">總台數<br>Total</div></div>
-  <div class="stat-card done"><div class="num" id="statDone">0</div><div class="lbl">已完成<br>Completed</div></div>
-  <div class="stat-card wip"><div class="num" id="statWip">0</div><div class="lbl">進行中<br>In Progress</div></div>
-  <div class="stat-card pending"><div class="num" id="statPending">54</div><div class="lbl">待作業<br>Pending</div></div>
-  <div class="stat-card rate"><div class="num" id="statRate">0%</div><div class="lbl">完成率<br>Completion</div></div>
-</div>
-
-<div class="wip-banner" id="wipBanner">
-  <span class="wip-label">🔧 進行中 In Progress</span>
-  <div class="wip-cars" id="wipCarTags"></div>
-  <span class="wip-date" id="wipDateLabel"></span>
+  <div class="stat-card s-total"><div class="num" id="statTotal">54</div><div class="lbl">總台數<br>Total</div></div>
+  <div class="stat-card s-done"><div class="num" id="statDone">54</div><div class="lbl">均完成<br>All Clear</div></div>
+  <div class="stat-card s-fault"><div class="num" id="statFault">0</div><div class="lbl">故障<br>Fault</div></div>
+  <div class="stat-card s-wip"><div class="num" id="statWip">0</div><div class="lbl">維修中<br>Under Repair</div></div>
+  <div class="stat-card s-pend"><div class="num" id="statPend">0</div><div class="lbl">待確認<br>Pending</div></div>
+  <div class="stat-card s-rate"><div class="num" id="statRate">100%</div><div class="lbl">正常率<br>Normal Rate</div></div>
 </div>
 
 <div class="progress-wrap">
-  <div class="progress-label" id="progressLabel">完成進度：0 / 50 台</div>
-  <div class="progress-track"><div class="progress-fill" id="progressFill" style="width:0%"></div></div>
+  <div class="progress-label" id="progressLabel">均完成台數 All Clear：54 / 54 units</div>
+  <div class="progress-track"><div class="progress-fill" id="progressFill" style="width:100%"></div></div>
 </div>
 
-<div class="updated-info" id="updatedInfo">
-  ⚠️ 尚未有進度更新，請通知作業人員回報今日進度。
+<div class="toolbar">
+  <button class="add-col-btn" onclick="openAddCol()">＋ 新增欄位 Add Column</button>
+  <span class="toolbar-hint">可新增自訂故障描述欄位　Add custom fault description columns</span>
 </div>
 
 <div class="table-wrap">
   <table>
     <thead>
-      <tr>
-        <th>#</th>
-        <th>車號<br><span style="font-weight:400;opacity:0.7;font-size:0.7rem;">Car No.</span></th>
-        <th>DC降級進度<br><span style="font-weight:400;opacity:0.7;font-size:0.7rem;">DC Demotion</span></th>
-        <th>DT&amp;E檢查<br><span style="font-weight:400;opacity:0.7;font-size:0.7rem;">DT&amp;E Check</span></th>
-        <th>作業日期<br><span style="font-weight:400;opacity:0.7;font-size:0.7rem;">Scheduled Date</span></th>
-        <th>完成日期<br><span style="font-weight:400;opacity:0.7;font-size:0.7rem;">Completion Date</span></th>
-        <th>負責人員<br><span style="font-weight:400;opacity:0.7;font-size:0.7rem;">Technician</span></th>
-        <th>降級後狀態<br><span style="font-weight:400;opacity:0.7;font-size:0.7rem;">Post-Demotion</span></th>
-        <th>MissionOps更新<br><span style="font-weight:400;opacity:0.7;font-size:0.7rem;">Software Update</span></th>
-        <th>無線電更新<br><span style="font-weight:400;opacity:0.7;font-size:0.7rem;">Radio Update</span></th>
-        <th>註記<br><span style="font-weight:400;opacity:0.7;font-size:0.7rem;">Notes</span></th>
+      <tr id="theadRow">
+        <th class="th-no">#</th>
+        <th class="th-car">車號<br><span style="font-weight:400;opacity:0.7;font-size:0.7rem;">Car No.</span></th>
+        <th class="th-col">故障描述<br><span style="font-weight:400;opacity:0.7;font-size:0.7rem;">Fault Description</span></th>
       </tr>
     </thead>
     <tbody id="tableBody"></tbody>
   </table>
 </div>
 
-<div class="legend">
-  <div class="legend-item"><div class="legend-dot ld-done"></div>全部完成 All Done</div>
-  <div class="legend-item"><div class="legend-dot ld-dc-done"></div>降級完成 待DT&amp;E / Demoted, DT&amp;E Pending</div>
-  <div class="legend-item"><div class="legend-dot ld-wip"></div>進行中 In Progress</div>
-  <div class="legend-item"><div class="legend-dot ld-pend"></div>待作業 Pending</div>
-  <div class="legend-item"><div class="legend-dot ld-incomplete"></div>未完成 Incomplete</div>
-</div>
-
 <div class="save-bar" id="saveBar">
-  <span class="save-bar-text" id="saveBarText">📝 你有 <strong id="saveBarCount">0</strong> 項變更尚未儲存　Unsaved changes</span>
+  <span class="save-bar-text" id="saveBarText">
+    📝 你有 <strong id="saveBarCount">0</strong> 項變更尚未儲存　Unsaved changes
+  </span>
   <button class="discard-btn" onclick="discardChanges()">✕ 放棄變更 Discard</button>
-  <button class="save-btn" onclick="commitChanges()">💾 儲存並送出 Save &amp; Submit</button>
+  <button class="save-btn" onclick="openSaveConfirm()">💾 儲存並送出 Save &amp; Submit</button>
 </div>
 
-<footer>CN301-370 DC Demotion Tracking System　｜　DC降級作業追蹤系統　｜　Last Updated 最後更新：<span id="footerUpdated">-</span></footer>
+<!-- 儲存確認 Modal -->
+<div class="modal-overlay" id="saveModal">
+  <div class="modal">
+    <h3>💾 確認儲存 Confirm Save</h3>
+    <p class="modal-desc">
+      確定要儲存 <strong id="modalCount">0</strong> 項變更，並即時同步給所有使用者嗎？<br>
+      <span class="warn-text">⚠️ 儲存後將覆蓋雲端資料，請確認後再送出。</span>
+    </p>
+    <div class="modal-actions">
+      <button class="btn-cancel" onclick="closeSaveModal()">✕ 取消 Cancel</button>
+      <button class="btn-confirm" onclick="commitChanges()">✓ 確認儲存 Confirm</button>
+    </div>
+  </div>
+</div>
+
+<!-- 新增欄位 Modal -->
+<div class="modal-overlay" id="addColModal">
+  <div class="modal">
+    <h3>＋ 新增故障描述欄位 Add Column</h3>
+    <p class="modal-desc">請輸入新欄位的名稱（最多 30 字）：</p>
+    <input type="text" id="newColName"
+           placeholder="例如：電氣故障、車門故障、空調故障…"
+           onkeydown="if(event.key==='Enter')confirmAddColumn()"
+           maxlength="30" />
+    <div class="modal-actions">
+      <button class="btn-cancel" onclick="closeAddColModal()">✕ 取消 Cancel</button>
+      <button class="btn-add" onclick="confirmAddColumn()">＋ 新增 Add</button>
+    </div>
+  </div>
+</div>
+
+<footer>
+  CN301-370 Fault Tracking System　｜　CN301-370 故障追蹤系統　｜
+  Last Updated 最後更新：<span id="footerUpdated">-</span>
+</footer>
 
 <script>
-// ===== 進度資料區（每次更新只需修改此處） =====
-const LAST_UPDATED = "2026-06-08"; // v14 — 新增「無線電更新」欄位（radioUpdate，比照 v13 暫存批次送出機制，存於 carStatus collection）
-const DATA = [
-  // ── 已完成 Completed ──
-  { car: "CN302", status: "完成", dte: "完成", date: "2026-05-23", scheduledDate: "—", person: "Mark", afterStatus: "—", note: "操課用車 Training Vehicle（專長丁 Specialist-D）" },
-  { car: "CN307", status: "完成", dte: "完成", date: "2026-05-23", scheduledDate: "—", person: "Mark", afterStatus: "—", note: "操課用車 Training Vehicle（專長己 Specialist-F）" },
-  { car: "CN321", status: "完成", dte: "待查", date: "2026-05-23", scheduledDate: "—", person: "Mark", afterStatus: "—", note: "" },
-  { car: "CN323", status: "完成", dte: "待查", date: "2026-05-23", scheduledDate: "—", person: "Mark", afterStatus: "—", note: "" },
-  { car: "CN337", status: "完成", dte: "完成", date: "2026-05-23", scheduledDate: "—", person: "Mark", afterStatus: "—", note: "操課用車 Training Vehicle（專長甲 Specialist-A）" },
-  { car: "CN339", status: "完成", dte: "完成", date: "2026-05-23", scheduledDate: "—", person: "Mark", afterStatus: "—", note: "操課用車 Training Vehicle（專長戊 Specialist-E）" },
-  { car: "CN340", status: "完成", dte: "完成", date: "2026-05-23", scheduledDate: "—", person: "Mark", afterStatus: "—", note: "操課用車 Training Vehicle（專長戊 Specialist-E）" },
-  { car: "CN345", status: "完成", dte: "完成", date: "2026-05-23", scheduledDate: "—", person: "Mark", afterStatus: "—", note: "操課用車 Training Vehicle（專長丁 Specialist-D）" },
-  { car: "CN348", status: "完成", dte: "完成", date: "2026-05-23", scheduledDate: "—", person: "Mark", afterStatus: "—", note: "操課用車 Training Vehicle（進階乙 Advanced-B）" },
-  { car: "CN353", status: "完成", dte: "待查", date: "2026-05-23", scheduledDate: "—", person: "Mark", afterStatus: "—", note: "" },
-  { car: "CN356", status: "完成", dte: "待查", date: "2026-05-23", scheduledDate: "—", person: "Mark", afterStatus: "—", note: "" },
-  { car: "CN357", status: "完成", dte: "待查", date: "2026-05-23", scheduledDate: "—", person: "Mark", afterStatus: "—", note: "" },
-  { car: "CN358", status: "完成", dte: "待查", date: "2026-05-23", scheduledDate: "—", person: "Mark", afterStatus: "—", note: "" },
-  { car: "CN360", status: "完成", dte: "待查", date: "2026-05-23", scheduledDate: "—", person: "Mark", afterStatus: "—", note: "" },
-  { car: "CN362", status: "完成", dte: "待查", date: "2026-05-23", scheduledDate: "—", person: "Mark", afterStatus: "—", note: "" },
-  { car: "CN370", status: "完成", dte: "待查", date: "2026-05-23", scheduledDate: "—", person: "Mark", afterStatus: "—", note: "" },
-  { car: "CN304", status: "完成", dte: "完成", date: "2026-05-26", scheduledDate: "—", person: "Mark", afterStatus: "—", note: "操課用車 Training Vehicle（專長乙 Specialist-B）" },
-  { car: "CN312", status: "完成", dte: "完成", date: "2026-05-26", scheduledDate: "—", person: "—", afterStatus: "—", note: "操課用車 Training Vehicle（專長甲 Specialist-A）" },
-  { car: "CN336", status: "完成", dte: "完成", date: "2026-05-27", scheduledDate: "—", person: "Mark", afterStatus: "—", note: "操課用車 Training Vehicle（專長己 Specialist-F）" },
-  { car: "CN338", status: "完成", dte: "完成", date: "2026-05-26", scheduledDate: "—", person: "—", afterStatus: "—", note: "操課用車 Training Vehicle（專長乙 Specialist-B）" },
-  { car: "CN341", status: "待作業", dte: "—", date: "—", scheduledDate: "—", person: "—", afterStatus: "—", note: "操課用車 Training Vehicle（進階乙 Advanced-B）" },
-  { car: "CN342", status: "完成", dte: "完成", date: "2026-05-26", scheduledDate: "—", person: "—", afterStatus: "—", note: "操課用車 Training Vehicle（進階甲 Advanced-A）" },
-  { car: "CN343", status: "完成", dte: "完成", date: "2026-05-26", scheduledDate: "—", person: "—", afterStatus: "—", note: "操課用車 Training Vehicle（專長丙 Specialist-C）" },
-  { car: "CN344", status: "完成", dte: "完成", date: "2026-05-26", scheduledDate: "—", person: "—", afterStatus: "—", note: "操課用車 Training Vehicle（專長丙 Specialist-C）" },
-  // ── 待作業 Pending ──
-  { car: "CN301", status: "完成", dte: "完成", date: "2026-05-27", scheduledDate: "—", person: "—", afterStatus: "—", note: "" },
-  { car: "CN303", status: "待作業", dte: "—", date: "—", scheduledDate: "—", person: "—", afterStatus: "—", note: "" },
-  { car: "CN305", status: "完成", dte: "完成", date: "2026-05-27", scheduledDate: "—", person: "—", afterStatus: "—", note: "" },
-  { car: "CN306", status: "完成", dte: "完成", date: "2026-05-28", scheduledDate: "—", person: "—", afterStatus: "—", note: "" },
-  { car: "CN309", status: "完成", dte: "完成", date: "2026-05-27", scheduledDate: "—", person: "—", afterStatus: "—", note: "" },
-  { car: "CN311", status: "完成", dte: "完成", date: "2026-06-02", scheduledDate: "—", person: "—", afterStatus: "—", note: "操課用車 Training Vehicle（進階甲 Advanced-A）" },
-  { car: "CN355", status: "完成", dte: "完成", date: "2026-05-28", scheduledDate: "—", person: "—", afterStatus: "—", note: "" },
-  { car: "CN308", status: "完成", dte: "完成", date: "2026-06-05", scheduledDate: "—", person: "—", afterStatus: "—", note: "" },
-  { car: "CN313", status: "完成", dte: "完成", date: "2026-06-05", scheduledDate: "—", person: "—", afterStatus: "—", note: "操課用車 Training Vehicle（專長戊 Specialist-E）" },
-  { car: "CN322", status: "完成", dte: "完成", date: "2026-06-05", scheduledDate: "—", person: "—", afterStatus: "—", note: "操課用車 Training Vehicle（專長己 Specialist-F）" },
-  { car: "CN324", status: "完成", dte: "完成", date: "2026-05-28", scheduledDate: "—", person: "—", afterStatus: "—", note: "操課用車 Training Vehicle（專長甲 Specialist-A）" },
-  { car: "CN325", status: "完成", dte: "完成", date: "2026-06-02", scheduledDate: "—", person: "—", afterStatus: "—", note: "操課用車 Training Vehicle（專長己 Specialist-F）" },
-  { car: "CN326", status: "完成", dte: "完成", date: "2026-05-28", scheduledDate: "—", person: "—", afterStatus: "—", note: "操課用車 Training Vehicle（專長丙 Specialist-C）" },
-  { car: "CN327", status: "待作業", dte: "—", date: "—", scheduledDate: "—", person: "—", afterStatus: "—", note: "操課用車 Training Vehicle（專長乙 Specialist-B）" },
-  { car: "CN328", status: "待作業", dte: "—", date: "—", scheduledDate: "—", person: "—", afterStatus: "—", note: "操課用車 Training Vehicle（專長甲 Specialist-A）" },
-  { car: "CN329", status: "完成", dte: "完成", date: "2026-06-02", scheduledDate: "—", person: "—", afterStatus: "—", note: "操課用車 Training Vehicle（進階甲 Advanced-A）" },
-  { car: "CN330", status: "待作業", dte: "—", date: "—", scheduledDate: "—", person: "—", afterStatus: "—", note: "操課用車 Training Vehicle（進階甲 Advanced-A）" },
-  { car: "CN331", status: "待作業", dte: "—", date: "—", scheduledDate: "—", person: "—", afterStatus: "—", note: "操課用車 Training Vehicle（進階乙 Advanced-B）" },
-  { car: "CN346", status: "完成", dte: "完成", date: "2026-05-28", scheduledDate: "—", person: "—", afterStatus: "—", note: "" },
-  { car: "CN347", status: "完成", dte: "完成", date: "2026-05-28", scheduledDate: "—", person: "—", afterStatus: "—", note: "操課用車 Training Vehicle（專長丙 Specialist-C）" },
-  { car: "CN354", status: "完成", dte: "完成", date: "2026-05-28", scheduledDate: "—", person: "—", afterStatus: "—", note: "操課用車 Training Vehicle（進階乙 Advanced-B）" },
-  { car: "CN361", status: "完成", dte: "完成", date: "2026-05-28", scheduledDate: "—", person: "—", afterStatus: "—", note: "操課用車 Training Vehicle（專長丁 Specialist-D）" },
-  { car: "CN363", status: "完成", dte: "完成", date: "2026-06-02", scheduledDate: "—", person: "—", afterStatus: "—", note: "操課用車 Training Vehicle（專長丁 Specialist-D）" },
-  { car: "CN364", status: "完成", dte: "完成", date: "2026-06-02", scheduledDate: "—", person: "—", afterStatus: "—", note: "操課用車 Training Vehicle（專長戊 Specialist-E）" },
-];
-// ==============================================
-
 const EXCLUDED = new Set(["CN315","CN316","CN317","CN318","CN332","CN333","CN334","CN335","CN349","CN350","CN351","CN352","CN365","CN366","CN367","CN368"]);
 const TOTAL = 54;
 const cars = Array.from({length: 70}, (_, i) => `CN${301 + i}`).filter(c => !EXCLUDED.has(c));
 
-function getRecord(car) {
-  return DATA.find(d => d.car === car) || null;
+const STATUS_OPTS = [
+  { value: "均完成", label: "✓ 均完成 All Clear",       cls: "f-done"    },
+  { value: "故障",   label: "✗ 故障 Fault",             cls: "f-fault"   },
+  { value: "維修中", label: "🔧 維修中 Under Repair",    cls: "f-wip"     },
+  { value: "待確認", label: "⏳ 待確認 Pending Check",   cls: "f-pending" },
+];
+
+let customColumns  = [];  // [{ id, name }]
+let cloudData      = {};  // { [car]: { [colId_status|colId_desc]: val } }
+let pendingChanges = {};  // { "car__colId__field": val }
+let newPendingCols = [];  // [{ id, name }] — 尚未送出的新欄位
+
+function getVal(car, colId, field) {
+  const pKey = `${car}__${colId}__${field}`;
+  if (pendingChanges[pKey] !== undefined) return pendingChanges[pKey];
+  const cKey = `${colId}_${field}`;
+  return (cloudData[car] && cloudData[car][cKey] !== undefined)
+    ? cloudData[car][cKey]
+    : (field === "status" ? "均完成" : "");
+}
+
+function escH(s) {
+  return String(s)
+    .replace(/&/g, "&amp;").replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;").replace(/"/g, "&quot;");
+}
+
+function pad(n) { return String(n).padStart(2, "0"); }
+
+function buildCell(car, colId, status, desc) {
+  const sCls  = STATUS_OPTS.find(o => o.value === status)?.cls || "f-pending";
+  const sPend = pendingChanges[`${car}__${colId}__status`] !== undefined ? " pending-edit" : "";
+  const dPend = pendingChanges[`${car}__${colId}__desc`]   !== undefined ? " pending-edit" : "";
+  const opts  = STATUS_OPTS.map(o =>
+    `<option value="${o.value}"${status === o.value ? " selected" : ""}>${escH(o.label)}</option>`
+  ).join("");
+  return `<div class="cell-wrap">
+    <select class="fault-select ${sCls}${sPend}"
+            onchange="onStatusChange('${car}','${colId}',this)">${opts}</select>
+    <textarea class="fault-desc${dPend}" rows="2"
+              placeholder="故障描述… Fault description"
+              oninput="onDescChange('${car}','${colId}',this)">${escH(desc)}</textarea>
+  </div>`;
 }
 
 function render() {
-  const tbody = document.getElementById("tableBody");
-  let doneCount = 0, wipCount = 0;
+  // 更新動態表頭欄
+  const theadRow = document.getElementById("theadRow");
+  while (theadRow.children.length > 3) theadRow.removeChild(theadRow.lastChild);
+  customColumns.forEach(col => {
+    const th = document.createElement("th");
+    th.className = "th-col";
+    th.innerHTML = `${escH(col.name)}<br>
+      <span style="font-weight:400;opacity:0.7;font-size:0.7rem;">Fault Description</span>
+      <button class="del-col-btn" onclick="removeColumn('${escH(col.id)}')">✕ 刪除</button>`;
+    theadRow.appendChild(th);
+  });
 
-  tbody.innerHTML = cars.map((car, idx) => {
-    const r    = getRecord(car);
-    const live = liveStatus[car] || {};
-    const pend = pendingChanges[car] || {};
-    const st   = pend.demotion   || live.demotion   || r?.status || "待作業";
-    const dte  = pend.dte        || live.dte        || r?.dte    || "—";
-    const radio = pend.radioUpdate || live.radioUpdate || "—";
-    const dt   = r?.date          || "—";
-    const sdt  = r?.scheduledDate || "—";
-    const per  = r?.person        || "—";
-    const aft  = r?.afterStatus   || "—";
-    const nt   = r?.note          || "";
-
-    const fullyDone  = st === "完成" && dte === "完成";
-    const dcDoneOnly = st === "完成" && dte !== "完成";
-    const incomplete = st === "未完成";
-
-    if (fullyDone)       doneCount++;
-    if (st === "進行中") wipCount++;
-
-    // 整行背景
+  // 更新表格主體
+  document.getElementById("tableBody").innerHTML = cars.map((car, idx) => {
+    const st = getVal(car, "main", "status");
+    const ds = getVal(car, "main", "desc");
     let rowBg = "";
-    if (fullyDone)           rowBg = "background:#f0fdf4;";
-    else if (incomplete)     rowBg = "background:#fff1f2;";
-    else if (dcDoneOnly)     rowBg = "background:#eff6ff;";
-    else if (st === "進行中") rowBg = "background:#fffbeb;";
-
-    // DC降級狀態 — 下拉選單（先暫存於本機，按「儲存並送出」才會一次寫入 Firestore）
-    const dsCls = st === "完成" ? "ds-done" : st === "進行中" ? "ds-wip" : st === "未完成" ? "ds-incomplete" : "ds-pending";
-    const dsPend = pend.demotion !== undefined ? " pending-edit" : "";
-    const dcBadge = `<select class="ds-select ${dsCls}${dsPend}" onchange="saveDemotion('${car}',this)">
-      <option value="待作業" ${st==="待作業"?"selected":""}>待作業 Pending</option>
-      <option value="進行中" ${st==="進行中"?"selected":""}>進行中 In Progress</option>
-      <option value="完成"   ${st==="完成"?"selected":""}>✓ 完成 Done</option>
-      <option value="未完成" ${st==="未完成"?"selected":""}>✗ 未完成 Incomplete</option>
-    </select>`;
-
-    // DT&E 檢查 — 下拉選單（先暫存於本機，按「儲存並送出」才會一次寫入 Firestore）
-    const dteCls = dte === "完成" ? "dte-done" : dte === "待查" ? "dte-pending" : "dte-na";
-    const dtePend = pend.dte !== undefined ? " pending-edit" : "";
-    const dteBadge = `<select class="dte-select ${dteCls}${dtePend}" onchange="saveDTE('${car}',this)">
-      <option value="—"   ${dte==="—"?"selected":""}>—</option>
-      <option value="待查" ${dte==="待查"?"selected":""}>待查 Pending</option>
-      <option value="完成" ${dte==="完成"?"selected":""}>✓ 完成 Done</option>
-    </select>`;
-
-    // MissionOps 下拉選單（先暫存於本機，按「儲存並送出」才會一次寫入 Firestore）
-    const moVal = pend.mo || moData[car] || "—";
-    const moClass = moVal === "已完成" ? "mo-done" : moVal === "更新中" ? "mo-wip" : moVal === "不需更新" ? "mo-na" : "mo-pending";
-    const moPend = pend.mo !== undefined ? " pending-edit" : "";
-    const moSelect = `<select class="mo-select ${moClass}${moPend}" onchange="saveMO('${car}',this)">
-      <option value="—"      ${moVal==="—"?"selected":""}>—</option>
-      <option value="待更新"  ${moVal==="待更新"?"selected":""}>⏳ 待更新 Pending</option>
-      <option value="更新中"  ${moVal==="更新中"?"selected":""}>🔄 更新中 In Progress</option>
-      <option value="已完成"  ${moVal==="已完成"?"selected":""}>✅ 已完成 Completed</option>
-      <option value="不需更新" ${moVal==="不需更新"?"selected":""}>— 不需更新 N/A</option>
-    </select>`;
-
-    // 無線電更新 下拉選單（先暫存於本機，按「儲存並送出」才會一次寫入 Firestore，與 carStatus 同份文件 merge）
-    const radioCls = radio === "已完成" ? "radio-done" : radio === "更新中" ? "radio-wip" : radio === "不需更新" ? "radio-na" : "radio-pending";
-    const radioPend = pend.radioUpdate !== undefined ? " pending-edit" : "";
-    const radioSelect = `<select class="radio-select ${radioCls}${radioPend}" onchange="saveRadio('${car}',this)">
-      <option value="—"      ${radio==="—"?"selected":""}>—</option>
-      <option value="待更新"  ${radio==="待更新"?"selected":""}>⏳ 待更新 Pending</option>
-      <option value="更新中"  ${radio==="更新中"?"selected":""}>🔄 更新中 In Progress</option>
-      <option value="已完成"  ${radio==="已完成"?"selected":""}>✅ 已完成 Completed</option>
-      <option value="不需更新" ${radio==="不需更新"?"selected":""}>— 不需更新 N/A</option>
-    </select>`;
-
-    // 作業日期 badge
-    let sdtCell;
-    if (sdt !== "—") {
-      sdtCell = `<span style="background:#e0f2fe;color:#0369a1;border-radius:12px;padding:2px 8px;font-size:0.78rem;font-weight:600;">${sdt}</span>`;
-    } else {
-      sdtCell = `<span style="color:#cbd5e1;">—</span>`;
-    }
-
+    if      (st === "均完成") rowBg = "background:#f0fdf4;";
+    else if (st === "故障")   rowBg = "background:#fff1f2;";
+    else if (st === "維修中") rowBg = "background:#fffbeb;";
+    const customCells = customColumns.map(col =>
+      `<td>${buildCell(car, col.id, getVal(car, col.id, "status"), getVal(car, col.id, "desc"))}</td>`
+    ).join("");
     return `<tr style="${rowBg}">
-      <td style="color:#94a3b8;font-size:0.75rem;">${idx+1}</td>
-      <td class="car-no">${car}</td>
-      <td>${dcBadge}</td>
-      <td>${dteBadge}</td>
-      <td class="date">${sdtCell}</td>
-      <td class="date">${dt}</td>
-      <td class="person">${per}</td>
-      <td class="after-status">${aft}</td>
-      <td>${moSelect}</td>
-      <td>${radioSelect}</td>
-      <td class="note">${nt}</td>
+      <td class="td-no">${idx + 1}</td>
+      <td class="td-car">${car}</td>
+      <td>${buildCell(car, "main", st, ds)}</td>
+      ${customCells}
     </tr>`;
   }).join("");
 
-  // 進行中布條
-  const wipCars = cars.filter(c => (pendingChanges[c]?.demotion || liveStatus[c]?.demotion || getRecord(c)?.status || "待作業") === "進行中");
-  const wipTagsEl = document.getElementById("wipCarTags");
-  const wipBanner = document.getElementById("wipBanner");
-  if (wipCars.length > 0) {
-    wipTagsEl.innerHTML = wipCars.map(c => {
-      const sdt = getRecord(c)?.scheduledDate || "—";
-      return `<span class="wip-car-tag">${c}</span>`;
-    }).join("");
-    // 若有排定作業日期，取第一筆顯示
-    const dates = [...new Set(wipCars.map(c => getRecord(c)?.scheduledDate).filter(d => d && d !== "—"))];
-    document.getElementById("wipDateLabel").textContent = dates.length ? `📅 預計作業 Scheduled：${dates.join("、")}` : "";
-    wipBanner.style.display = "flex";
-  } else {
-    wipBanner.style.display = "none";
-  }
-
-  const pendingCount = TOTAL - doneCount - wipCount;
-  const rate = Math.round((doneCount / TOTAL) * 100);
-
-  document.getElementById("statTotal").textContent   = TOTAL;
-  document.getElementById("statDone").textContent    = doneCount;
-  document.getElementById("statWip").textContent     = wipCount;
-  document.getElementById("statPending").textContent = pendingCount;
-  document.getElementById("statRate").textContent    = rate + "%";
-  document.getElementById("progressFill").style.width = rate + "%";
-  document.getElementById("progressLabel").textContent = `完成進度 Progress：${doneCount} / ${TOTAL} units`;
+  updateStats();
 
   const now = new Date();
-  const dateStr = `${now.getFullYear()}-${String(now.getMonth()+1).padStart(2,'0')}-${String(now.getDate()).padStart(2,'0')}`;
-  document.getElementById("headerDate").textContent = `📅 ${dateStr}`;
-  document.getElementById("footerUpdated").textContent = LAST_UPDATED || "尚未更新";
-
-  const infoEl = document.getElementById("updatedInfo");
-  if (LAST_UPDATED) {
-    infoEl.style.background = "#f0fdf4";
-    infoEl.style.borderColor = "#86efac";
-    infoEl.style.color = "#166534";
-    infoEl.textContent = `✅ Last Updated 最後更新：${LAST_UPDATED}　｜　${doneCount} units completed (${rate}%) 已完成`;
-  }
+  document.getElementById("headerDate").textContent =
+    `📅 ${now.getFullYear()}-${pad(now.getMonth() + 1)}-${pad(now.getDate())}`;
+  document.getElementById("footerUpdated").textContent =
+    `${now.getFullYear()}-${pad(now.getMonth() + 1)}-${pad(now.getDate())}`;
 }
 
-// ── Firebase Firestore 即時同步（採「先暫存、按下儲存才送出」模式）──
-const moData = {};
-const liveStatus = {};      // { [car]: { demotion, dte, radioUpdate, updatedAt } } — 來自雲端，跨裝置即時同步
-const pendingChanges = {};  // { [car]: { demotion?, dte?, mo?, radioUpdate? } } — 尚未送出的本機暫存變更
+function updateStats() {
+  let done = 0, fault = 0, wip = 0, pend = 0;
+  cars.forEach(car => {
+    const st = getVal(car, "main", "status");
+    if      (st === "均完成") done++;
+    else if (st === "故障")   fault++;
+    else if (st === "維修中") wip++;
+    else                      pend++;
+  });
+  document.getElementById("statDone").textContent  = done;
+  document.getElementById("statFault").textContent = fault;
+  document.getElementById("statWip").textContent   = wip;
+  document.getElementById("statPend").textContent  = pend;
+  const rate = Math.round((done / TOTAL) * 100);
+  document.getElementById("statRate").textContent  = rate + "%";
+  document.getElementById("progressFill").style.width = rate + "%";
+  document.getElementById("progressLabel").textContent =
+    `均完成台數 All Clear：${done} / ${TOTAL} units`;
+}
 
-// 把選單改動暫存到本機，並標記為「未儲存」（橘色虛線框），統一交給「儲存並送出」按鈕一次寫入雲端
-function stagePending(car, field, val, sel, activeCls, baseCls) {
-  if (!pendingChanges[car]) pendingChanges[car] = {};
-  pendingChanges[car][field] = val;
-  sel.className = baseCls + " " + activeCls + " pending-edit";
+// ── 事件處理 ──
+function onStatusChange(car, colId, sel) {
+  const val = sel.value;
+  pendingChanges[`${car}__${colId}__status`] = val;
+  const cls = STATUS_OPTS.find(o => o.value === val)?.cls || "f-pending";
+  sel.className = `fault-select ${cls} pending-edit`;
+  if (colId === "main") {
+    const row = sel.closest("tr");
+    row.style.background =
+      val === "均完成" ? "#f0fdf4" :
+      val === "故障"   ? "#fff1f2" :
+      val === "維修中" ? "#fffbeb" : "";
+    updateStats();
+  }
   updateSaveBar();
 }
 
-function saveMO(car, sel) {
-  const val = sel.value;
-  const cls = val === "已完成" ? "mo-done" : val === "更新中" ? "mo-wip" : val === "不需更新" ? "mo-na" : "mo-pending";
-  stagePending(car, "mo", val, sel, cls, "mo-select");
+function onDescChange(car, colId, ta) {
+  pendingChanges[`${car}__${colId}__desc`] = ta.value;
+  ta.classList.add("pending-edit");
+  updateSaveBar();
 }
 
-function saveDemotion(car, sel) {
-  const val = sel.value;
-  const cls = val === "完成" ? "ds-done" : val === "進行中" ? "ds-wip" : val === "未完成" ? "ds-incomplete" : "ds-pending";
-  stagePending(car, "demotion", val, sel, cls, "ds-select");
+// ── 欄位管理 ──
+function openAddCol() {
+  document.getElementById("newColName").value = "";
+  document.getElementById("addColModal").style.display = "flex";
+  setTimeout(() => document.getElementById("newColName").focus(), 60);
+}
+function closeAddColModal() { document.getElementById("addColModal").style.display = "none"; }
+
+function confirmAddColumn() {
+  const name = document.getElementById("newColName").value.trim();
+  if (!name) { document.getElementById("newColName").focus(); return; }
+  const col = { id: "col_" + Date.now(), name };
+  customColumns.push(col);
+  newPendingCols.push(col);
+  closeAddColModal();
+  updateSaveBar();
+  render();
 }
 
-function saveDTE(car, sel) {
-  const val = sel.value;
-  const cls = val === "完成" ? "dte-done" : val === "待查" ? "dte-pending" : "dte-na";
-  stagePending(car, "dte", val, sel, cls, "dte-select");
+function removeColumn(colId) {
+  if (!confirm("確定要刪除此欄位及所有相關資料嗎？\nDelete this column and all its data?")) return;
+  customColumns  = customColumns.filter(c => c.id !== colId);
+  newPendingCols = newPendingCols.filter(c => c.id !== colId);
+  Object.keys(pendingChanges).forEach(k => { if (k.includes(`__${colId}__`)) delete pendingChanges[k]; });
+  updateSaveBar();
+  render();
 }
 
-function saveRadio(car, sel) {
-  const val = sel.value;
-  const cls = val === "已完成" ? "radio-done" : val === "更新中" ? "radio-wip" : val === "不需更新" ? "radio-na" : "radio-pending";
-  stagePending(car, "radioUpdate", val, sel, cls, "radio-select");
-}
-
-// 更新底部浮動的「儲存列」：顯示尚未送出的變更數量
+// ── 儲存列 ──
 function updateSaveBar() {
-  const count = Object.values(pendingChanges).reduce((sum, f) => sum + Object.keys(f).length, 0);
-  const bar = document.getElementById("saveBar");
-  const textEl = document.getElementById("saveBarText");
+  const count = Object.keys(pendingChanges).length + newPendingCols.length;
+  document.getElementById("saveBarCount").textContent = count;
+  document.getElementById("saveBar").style.display = count > 0 ? "flex" : "none";
   if (count > 0) {
-    textEl.innerHTML = `📝 你有 <strong>${count}</strong> 項變更尚未儲存　Unsaved changes`;
-    bar.style.display = "flex";
-  } else {
-    bar.style.display = "none";
+    document.getElementById("saveBarText").innerHTML =
+      `📝 你有 <strong>${count}</strong> 項變更尚未儲存　Unsaved changes`;
   }
 }
 
-// 按下「儲存並送出」：把所有暫存變更一次批次寫入 Firestore，送出後跨裝置即時同步給所有人
-function commitChanges() {
-  const carsToSave = Object.keys(pendingChanges);
-  if (carsToSave.length === 0) return;
+// ── 儲存確認 ──
+function openSaveConfirm() {
+  const count = Object.keys(pendingChanges).length + newPendingCols.length;
+  document.getElementById("modalCount").textContent = count;
+  document.getElementById("saveModal").style.display = "flex";
+}
+function closeSaveModal() { document.getElementById("saveModal").style.display = "none"; }
 
+function commitChanges() {
+  closeSaveModal();
   const textEl = document.getElementById("saveBarText");
   textEl.innerHTML = "⏳ 儲存中… Saving…";
 
   const batch = db.batch();
-  const now = new Date().toISOString();
-  carsToSave.forEach(car => {
-    const f = pendingChanges[car];
-    const csFields = {};
-    if (f.demotion    !== undefined) csFields.demotion    = f.demotion;
-    if (f.dte         !== undefined) csFields.dte         = f.dte;
-    if (f.radioUpdate !== undefined) csFields.radioUpdate = f.radioUpdate;
-    if (Object.keys(csFields).length) {
-      csFields.updatedAt = now;
-      batch.set(db.collection("carStatus").doc(car), csFields, { merge: true });
-    }
-    if (f.mo !== undefined) {
-      batch.set(db.collection("missionOps").doc(car), { value: f.mo, updatedAt: now });
-    }
+  const now   = new Date().toISOString();
+
+  // 儲存欄位定義
+  batch.set(
+    db.collection("config").doc("customColumns"),
+    { cols: customColumns.map(c => ({ id: c.id, name: c.name })), updatedAt: now }
+  );
+
+  // 依車號分組，批次寫入
+  const grouped = {};
+  Object.entries(pendingChanges).forEach(([key, val]) => {
+    const [car, colId, field] = key.split("__");
+    if (!grouped[car]) grouped[car] = {};
+    grouped[car][`${colId}_${field}`] = val;
+  });
+  Object.entries(grouped).forEach(([car, fields]) => {
+    batch.set(db.collection("faultData").doc(car), { ...fields, updatedAt: now }, { merge: true });
   });
 
   batch.commit().then(() => {
+    Object.entries(grouped).forEach(([car, fields]) => {
+      if (!cloudData[car]) cloudData[car] = {};
+      Object.assign(cloudData[car], fields);
+    });
     Object.keys(pendingChanges).forEach(k => delete pendingChanges[k]);
-    textEl.innerHTML = "✅ 已成功儲存並同步給所有人！Saved &amp; synced!";
-    setTimeout(() => { document.getElementById("saveBar").style.display = "none"; render(); }, 1600);
+    newPendingCols.length = 0;
+    textEl.innerHTML = "✅ 已成功儲存並同步！Saved &amp; synced!";
+    setTimeout(() => { document.getElementById("saveBar").style.display = "none"; render(); }, 1800);
   }).catch(err => {
     textEl.innerHTML = "❌ 儲存失敗，請重試　Save failed — please retry";
-    console.warn("批次寫入失敗", err);
+    console.warn("batch commit failed", err);
   });
 }
 
-// 按下「放棄變更」：清除本機暫存，畫面還原成雲端目前的狀態
 function discardChanges() {
   Object.keys(pendingChanges).forEach(k => delete pendingChanges[k]);
+  customColumns  = customColumns.filter(c => !newPendingCols.find(p => p.id === c.id));
+  newPendingCols.length = 0;
   document.getElementById("saveBar").style.display = "none";
   render();
 }
@@ -666,71 +506,31 @@ render();
 <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore-compat.js"></script>
 <script>
-const firebaseConfig = {
+firebase.initializeApp({
   apiKey: "AIzaSyBRNMZFCSnWk1X_HZMuDa_ym-Zvwk9ei-U",
   authDomain: "fics-6e2cd.firebaseapp.com",
   projectId: "fics-6e2cd",
   storageBucket: "fics-6e2cd.firebasestorage.app",
   messagingSenderId: "995935936553",
   appId: "1:995935936553:web:d5d80b56bed9bf681c3c38"
-};
-
-firebase.initializeApp(firebaseConfig);
+});
 const db = firebase.firestore();
 
-// 即時監聽 missionOps 集合，有任何變更自動更新畫面
-db.collection("missionOps").onSnapshot(snapshot => {
-  snapshot.forEach(doc => {
-    moData[doc.id] = doc.data().value || "—";
-  });
-  render();
-}, err => {
-  console.warn("Firestore 連線失敗（missionOps），改用本地模式", err);
-});
-
-// 即時監聽 carStatus 集合（DC降級進度 / DT&E檢查），有任何變更自動更新畫面與統計數字
-db.collection("carStatus").onSnapshot(snapshot => {
-  snapshot.forEach(doc => {
-    liveStatus[doc.id] = doc.data();
-  });
-  render();
-}, err => {
-  console.warn("Firestore 連線失敗（carStatus），改用本地模式", err);
-});
-
-// 首次啟用：若雲端尚無 carStatus 資料，將目前 DATA 內容寫入雲端做為初始狀態（之後雲端即為主要資料來源）
-db.collection("carStatus").limit(1).get().then(snapshot => {
-  if (snapshot.empty) {
-    const batch = db.batch();
-    cars.forEach(car => {
-      const r = getRecord(car);
-      batch.set(db.collection("carStatus").doc(car), {
-        demotion: r?.status || "待作業",
-        dte: r?.dte || "—",
-        radioUpdate: r?.radioUpdate || "—",
-        updatedAt: new Date().toISOString()
-      });
-    });
-    batch.commit().then(() => console.log("✅ carStatus 雲端初始化完成"));
+// 即時監聽自訂欄位定義
+db.collection("config").doc("customColumns").onSnapshot(doc => {
+  if (doc.exists) {
+    const saved = (doc.data().cols || []).filter(c => c.id && c.name);
+    const localNewIds = new Set(newPendingCols.map(c => c.id));
+    customColumns = [...saved.filter(c => !localNewIds.has(c.id)), ...newPendingCols];
   }
-});
+  render();
+}, err => console.warn("config snapshot error", err));
 
-// 補種：既有 carStatus 文件（v12/v13 已建立）尚無 radioUpdate 欄位，
-// 補上預設值 "—"，避免影響既有 demotion / dte 資料（merge 寫入）
-db.collection("carStatus").get().then(snapshot => {
-  const batch = db.batch();
-  let needsSeed = false;
-  snapshot.forEach(doc => {
-    if (doc.data().radioUpdate === undefined) {
-      needsSeed = true;
-      batch.set(doc.ref, { radioUpdate: "—" }, { merge: true });
-    }
-  });
-  if (needsSeed) {
-    batch.commit().then(() => console.log("✅ carStatus radioUpdate 欄位補種完成"));
-  }
-});
-
+// 即時監聽故障資料
+db.collection("faultData").onSnapshot(snap => {
+  snap.forEach(doc => { cloudData[doc.id] = doc.data(); });
+  render();
+}, err => console.warn("faultData snapshot error", err));
 </script>
 </body>
 </html>
