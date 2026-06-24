@@ -245,9 +245,16 @@ const STATUS_OPTS = [
 ];
 const STATUS_CLS = Object.fromEntries(STATUS_OPTS.map(o => [o.value, o.cls]));
 
-// faultList[car] = [{ id, status, desc, _new?, _dirty?, _del? }]
+function makeId() { return "f" + Date.now().toString(36) + Math.random().toString(36).slice(2,5); }
+
+// faultList[car] = [{ id, status, desc, _new?, _dirty?, _del?, _default? }]
+// _default: 虛擬預設項目（未改動不計入待存數量，不寫入雲端）
 const faultList = {};
-cars.forEach(car => { faultList[car] = []; });
+const savedCloud = {}; // 記錄雲端已儲存的資料，供 discard 使用
+cars.forEach(car => {
+  faultList[car] = [{ id: makeId(), status: "待確認", desc: "", _default: true }];
+  savedCloud[car] = null;
+});
 
 function escH(s) {
   return String(s || "").replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;").replace(/"/g,"&quot;");
@@ -282,21 +289,22 @@ function renderCarCell(car) {
     const opts = STATUS_OPTS.map(o =>
       `<option value="${o.value}"${f.status===o.value?" selected":""}>${escH(o.label)}</option>`
     ).join("");
-    const newCls = f._new ? " is-new" : "";
-    return `<div class="fault-item${newCls}" id="fi_${car}_${f.id}">
+    const itemCls = f._new ? " is-new" : "";
+    // 均完成 不顯示描述欄
+    const descHtml = f.status !== "均完成"
+      ? `<input type="text" class="fi-desc" value="${escH(f.desc)}"
+               placeholder="故障描述… Fault description"
+               oninput="updateFaultDesc('${car}','${f.id}',this.value)">`
+      : "";
+    return `<div class="fault-item${itemCls}" id="fi_${car}_${f.id}">
       <select class="fi-select ${cls}" onchange="updateFaultStatus('${car}','${f.id}',this)">${opts}</select>
-      <input type="text" class="fi-desc" value="${escH(f.desc)}"
-             placeholder="故障描述… Fault description"
-             oninput="updateFaultDesc('${car}','${f.id}',this.value)">
+      ${descHtml}
       <button class="fi-del-btn" onclick="removeFault('${car}','${f.id}')" title="刪除此筆">✕</button>
     </div>`;
   }).join("");
 
-  const noFaults = active.length === 0
-    ? `<span class="no-faults">— 尚無故障記錄 No faults recorded</span>` : "";
-
   cell.innerHTML = `<div class="fault-list">
-    ${noFaults}${items}
+    ${items}
     <button class="add-fault-btn" onclick="addFault('${car}')">＋ 新增故障 Add Fault</button>
   </div>`;
 }
@@ -334,7 +342,7 @@ function updateStats() {
 
 // ── 操作 ──
 function addFault(car) {
-  const id = "f" + Date.now() + Math.random().toString(36).slice(2,5);
+  const id = makeId();
   faultList[car].push({ id, status: "待確認", desc: "", _new: true });
   renderCarCell(car);
   updateRowBg(car);
@@ -349,8 +357,18 @@ function addFault(car) {
 function removeFault(car, id) {
   const f = faultList[car].find(f => f.id === id);
   if (!f) return;
-  if (f._new) {
-    faultList[car] = faultList[car].filter(f => f.id !== id);
+  const activeCount = faultList[car].filter(f => !f._del).length;
+  if (activeCount <= 1) {
+    // 最後一筆：重置為虛擬預設，而非刪除
+    faultList[car] = [{ id: makeId(), status: "待確認", desc: "", _default: true }];
+    renderCarCell(car);
+    updateRowBg(car);
+    updateSaveBar();
+    updateStats();
+    return;
+  }
+  if (f._new || f._default) {
+    faultList[car] = faultList[car].filter(x => x.id !== id);
   } else {
     f._del = true;
   }
@@ -365,8 +383,12 @@ function updateFaultStatus(car, id, sel) {
   const f = faultList[car].find(f => f.id === id);
   if (!f) return;
   f.status = val;
-  if (!f._new) f._dirty = true;
+  // 虛擬預設被修改 → 變為真實新增
+  if (f._default) { delete f._default; f._new = true; }
+  else if (!f._new) { f._dirty = true; }
   sel.className = `fi-select ${STATUS_CLS[val] || "f-pending"}`;
+  // 根據狀態顯示/隱藏描述欄（不重繪整格以免失去焦點）
+  renderCarCell(car);
   updateRowBg(car);
   updateSaveBar();
   updateStats();
@@ -376,7 +398,8 @@ function updateFaultDesc(car, id, val) {
   const f = faultList[car].find(f => f.id === id);
   if (!f) return;
   f.desc = val;
-  if (!f._new) f._dirty = true;
+  if (f._default) { delete f._default; f._new = true; }
+  else if (!f._new) { f._dirty = true; }
   updateSaveBar();
 }
 
@@ -384,7 +407,8 @@ function updateFaultDesc(car, id, val) {
 function countPending() {
   let count = 0;
   cars.forEach(car => {
-    faultList[car].forEach(f => { if (f._new || f._dirty || f._del) count++; });
+    // _default 未修改的虛擬項目不計入待存數量
+    faultList[car].forEach(f => { if (!f._default && (f._new || f._dirty || f._del)) count++; });
   });
   return count;
 }
@@ -398,14 +422,18 @@ function updateSaveBar() {
 }
 
 function discardChanges() {
-  // 移除 _new，還原 _del / _dirty
   cars.forEach(car => {
-    faultList[car] = faultList[car]
-      .filter(f => !f._new)
-      .map(f => { delete f._dirty; delete f._del; return f; });
+    if (savedCloud[car] && savedCloud[car].length > 0) {
+      // 還原至雲端狀態
+      faultList[car] = savedCloud[car].map(f => ({ ...f }));
+    } else {
+      // 無雲端資料：重置為虛擬預設
+      faultList[car] = [{ id: makeId(), status: "待確認", desc: "", _default: true }];
+    }
+    renderCarCell(car);
+    updateRowBg(car);
   });
   document.getElementById("saveBar").style.display = "none";
-  cars.forEach(car => { renderCarCell(car); updateRowBg(car); });
   updateStats();
 }
 
@@ -423,12 +451,13 @@ function commitChanges() {
   const carsChanged = new Set();
 
   cars.forEach(car => {
-    const hasChange = faultList[car].some(f => f._new || f._dirty || f._del);
+    // _default 未修改的虛擬項目不寫入雲端
+    const hasChange = faultList[car].some(f => !f._default && (f._new || f._dirty || f._del));
     if (!hasChange) return;
     carsChanged.add(car);
     const ref = db.collection("faultData").doc(car);
     const data = { updatedAt: now };
-    faultList[car].filter(f => !f._del).forEach(f => {
+    faultList[car].filter(f => !f._del && !f._default).forEach(f => {
       data[f.id] = { status: f.status, desc: f.desc };
     });
     faultList[car].filter(f => f._del && !f._new).forEach(f => {
@@ -472,24 +501,30 @@ const db = firebase.firestore();
 db.collection("faultData").onSnapshot(snap => {
   snap.forEach(doc => {
     const car = doc.id;
-    if (!faultList[car]) return; // 非此系統的車號，略過
+    if (!faultList[car]) return;
     const data = doc.data();
-    const localIds = new Set(faultList[car].map(f => f.id));
 
+    // 從雲端擷取真實故障項目
+    const cloudItems = [];
     Object.entries(data).forEach(([id, val]) => {
-      if (id === "updatedAt" || typeof val !== "object") return;
-      if (localIds.has(id)) {
-        // 已存在：只更新沒有本機修改的項目
-        const local = faultList[car].find(f => f.id === id);
-        if (local && !local._dirty && !local._new && !local._del) {
-          local.status = val.status || "待確認";
-          local.desc   = val.desc   || "";
-        }
-      } else {
-        // 雲端新增的項目，加入本機
-        faultList[car].push({ id, status: val.status || "待確認", desc: val.desc || "" });
-      }
+      if (id === "updatedAt" || typeof val !== "object" || val === null) return;
+      cloudItems.push({ id, status: val.status || "待確認", desc: val.desc || "" });
     });
+
+    if (cloudItems.length > 0) {
+      savedCloud[car] = cloudItems.map(f => ({ ...f }));
+      // 移除虛擬預設，合併雲端資料與本機未儲存的修改
+      const localDirty = faultList[car].filter(f => !f._default && (f._new || f._dirty || f._del));
+      const localDirtyIds = new Set(localDirty.map(f => f.id));
+      faultList[car] = [
+        ...cloudItems.map(f => {
+          // 若本機有修改此項，保留本機版本
+          const dirty = localDirty.find(d => d.id === f.id);
+          return dirty || f;
+        }),
+        ...localDirty.filter(f => f._new && !cloudItems.find(c => c.id === f.id))
+      ];
+    }
   });
   cars.forEach(car => { renderCarCell(car); updateRowBg(car); });
   updateStats();
