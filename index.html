@@ -173,13 +173,13 @@
   <div style="font-size:2rem;">🚃</div>
   <div class="title-block">
     <h1>CN301-370 故障追蹤系統 <span class="en">Fault Tracking System</span></h1>
-    <p>作業單位 Unit：Communications Maintenance　｜　車廂數量 Total：54 units</p>
+    <p>作業單位 Unit：Communications Maintenance　｜　車廂數量 Total：57 units</p>
   </div>
   <div class="badge" id="headerDate">載入中…</div>
 </header>
 
 <div class="summary-bar">
-  <div class="stat-card s-total"><div class="num" id="statTotal">54</div><div class="lbl">總台數<br>Total</div></div>
+  <div class="stat-card s-total"><div class="num" id="statTotal">57</div><div class="lbl">總台數<br>Total</div></div>
   <div class="stat-card s-done"><div class="num" id="statDone">0</div><div class="lbl">無故障<br>All Clear</div></div>
   <div class="stat-card s-fault"><div class="num" id="statFault">0</div><div class="lbl">故障<br>Fault</div></div>
   <div class="stat-card s-wip"><div class="num" id="statWip">0</div><div class="lbl">維修中<br>Under Repair</div></div>
@@ -234,8 +234,12 @@
 
 <script>
 const EXCLUDED = new Set(["CN315","CN316","CN317","CN318","CN332","CN333","CN334","CN335","CN349","CN350","CN351","CN352","CN365","CN366","CN367","CN368"]);
-const TOTAL = 54;
-const cars = Array.from({length: 70}, (_, i) => `CN${301 + i}`).filter(c => !EXCLUDED.has(c));
+const TOTAL = 57;
+const NMS_CARS = ["NMS381","NMS382","NMS383"];
+const cars = [
+  ...NMS_CARS,
+  ...Array.from({length: 70}, (_, i) => `CN${301 + i}`).filter(c => !EXCLUDED.has(c))
+];
 
 const STATUS_OPTS = [
   { value: "均完成", label: "✓ 均完成 All Clear",    cls: "f-done"    },
