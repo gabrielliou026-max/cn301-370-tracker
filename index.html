@@ -68,7 +68,7 @@
   .fault-list { display: flex; flex-direction: column; gap: 6px; }
 
   .fault-item {
-    display: flex; align-items: center; gap: 6px;
+    display: flex; align-items: flex-start; gap: 6px;
     padding: 5px 6px; border-radius: 8px;
     background: #f8fafc; border: 1px solid #e2e8f0;
   }
@@ -90,9 +90,13 @@
   .fi-desc {
     flex: 1; border: none; background: transparent;
     font-size: 0.8rem; font-family: inherit; color: #1a2332; outline: none;
-    min-width: 0;
+    min-width: 0; resize: none; overflow: hidden;
+    line-height: 1.45; padding: 2px 0; min-height: 1.45em;
+    word-break: break-all;
   }
   .fi-desc::placeholder { color: #cbd5e1; font-style: italic; }
+  .fi-select { margin-top: 2px; }
+  .fi-del-btn { margin-top: 2px; }
 
   .fi-del-btn {
     flex-shrink: 0; border: none; background: none;
@@ -264,6 +268,7 @@ function escH(s) {
   return String(s || "").replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;").replace(/"/g,"&quot;");
 }
 function pad(n) { return String(n).padStart(2,"0"); }
+function autoResize(ta) { ta.style.height = "auto"; ta.style.height = ta.scrollHeight + "px"; }
 
 // ── 渲染 ──
 function renderAll() {
@@ -294,11 +299,11 @@ function renderCarCell(car) {
       `<option value="${o.value}"${f.status===o.value?" selected":""}>${escH(o.label)}</option>`
     ).join("");
     const itemCls = f._new ? " is-new" : "";
-    // 均完成 不顯示描述欄
+    // 均完成 不顯示描述欄；其他狀態用 textarea 完整顯示文字
     const descHtml = f.status !== "均完成"
-      ? `<input type="text" class="fi-desc" value="${escH(f.desc)}"
-               placeholder="故障描述… Fault description"
-               oninput="updateFaultDesc('${car}','${f.id}',this.value)">`
+      ? `<textarea class="fi-desc" rows="1"
+                   placeholder="故障描述… Fault description"
+                   oninput="updateFaultDesc('${car}','${f.id}',this.value);autoResize(this)">${escH(f.desc)}</textarea>`
       : "";
     return `<div class="fault-item${itemCls}" id="fi_${car}_${f.id}">
       <select class="fi-select ${cls}" onchange="updateFaultStatus('${car}','${f.id}',this)">${opts}</select>
@@ -311,6 +316,8 @@ function renderCarCell(car) {
     ${items}
     <button class="add-fault-btn" onclick="addFault('${car}')">＋ 新增故障 Add Fault</button>
   </div>`;
+  // 已有內容的 textarea 自動展開高度
+  cell.querySelectorAll(".fi-desc").forEach(ta => autoResize(ta));
 }
 
 function updateRowBg(car) {
