@@ -320,7 +320,7 @@ function renderCarCell(car) {
       : "";
     const personHtml = showDetail
       ? `<input class="fi-person" type="text" value="${escH(f.person || '')}"
-                placeholder="🙋 人員 Person"
+                placeholder="🙋 修復人員 Repaired by"
                 oninput="updateFaultPerson('${car}','${f.id}',this.value)">`
       : "";
     return `<div class="fault-item${itemCls}" id="fi_${car}_${f.id}">
