@@ -83,6 +83,7 @@
   }
   .fi-select:focus { border-color: #2d4a8a; }
   .f-done    { background: #dcfce7; color: #166534; border-color: #86efac; }
+  .f-fixed   { background: #cffafe; color: #0e7490; border-color: #67e8f9; }
   .f-fault   { background: #fee2e2; color: #991b1b; border-color: #fca5a5; }
   .f-wip     { background: #fef3c7; color: #92400e; border-color: #fcd34d; }
   .f-pending { background: #f1f5f9; color: #64748b; border-color: #e2e8f0; }
@@ -95,6 +96,16 @@
     word-break: break-all;
   }
   .fi-desc::placeholder { color: #cbd5e1; font-style: italic; }
+
+  .fi-person {
+    flex-shrink: 0; width: 110px;
+    border: 1px solid #e2e8f0; border-radius: 8px;
+    padding: 3px 8px; font-size: 0.72rem; font-family: inherit;
+    color: #1a2332; background: #f8fafc; outline: none; margin-top: 2px;
+  }
+  .fi-person:focus { border-color: #2d4a8a; background: white; }
+  .fi-person::placeholder { color: #cbd5e1; }
+
   .fi-select { margin-top: 2px; }
   .fi-del-btn { margin-top: 2px; }
 
@@ -246,10 +257,11 @@ const cars = [
 ];
 
 const STATUS_OPTS = [
-  { value: "均完成", label: "✓ 均完成 All Clear",    cls: "f-done"    },
-  { value: "故障",   label: "✗ 故障 Fault",          cls: "f-fault"   },
-  { value: "維修中", label: "🔧 維修中 Under Repair", cls: "f-wip"     },
-  { value: "待確認", label: "⏳ 待確認 Pending",      cls: "f-pending" },
+  { value: "均完成",    label: "✓ 均完成 All Clear",       cls: "f-done"    },
+  { value: "已修復完成", label: "✅ 已修復完成 Fixed",      cls: "f-fixed"   },
+  { value: "故障",      label: "✗ 故障 Fault",             cls: "f-fault"   },
+  { value: "維修中",    label: "🔧 維修中 Under Repair",    cls: "f-wip"     },
+  { value: "待確認",    label: "⏳ 待確認 Pending",         cls: "f-pending" },
 ];
 const STATUS_CLS = Object.fromEntries(STATUS_OPTS.map(o => [o.value, o.cls]));
 
@@ -260,7 +272,7 @@ function makeId() { return "f" + Date.now().toString(36) + Math.random().toStrin
 const faultList = {};
 const savedCloud = {}; // 記錄雲端已儲存的資料，供 discard 使用
 cars.forEach(car => {
-  faultList[car] = [{ id: makeId(), status: "待確認", desc: "", _default: true }];
+  faultList[car] = [{ id: makeId(), status: "待確認", desc: "", person: "", _default: true }];
   savedCloud[car] = null;
 });
 
@@ -299,15 +311,22 @@ function renderCarCell(car) {
       `<option value="${o.value}"${f.status===o.value?" selected":""}>${escH(o.label)}</option>`
     ).join("");
     const itemCls = f._new ? " is-new" : "";
-    // 均完成 不顯示描述欄；其他狀態用 textarea 完整顯示文字
-    const descHtml = f.status !== "均完成"
+    // 均完成 不顯示描述與人員欄；其他狀態完整顯示
+    const showDetail = f.status !== "均完成";
+    const descHtml = showDetail
       ? `<textarea class="fi-desc" rows="1"
                    placeholder="故障描述… Fault description"
                    oninput="updateFaultDesc('${car}','${f.id}',this.value);autoResize(this)">${escH(f.desc)}</textarea>`
       : "";
+    const personHtml = showDetail
+      ? `<input class="fi-person" type="text" value="${escH(f.person || '')}"
+                placeholder="🙋 人員 Person"
+                oninput="updateFaultPerson('${car}','${f.id}',this.value)">`
+      : "";
     return `<div class="fault-item${itemCls}" id="fi_${car}_${f.id}">
       <select class="fi-select ${cls}" onchange="updateFaultStatus('${car}','${f.id}',this)">${opts}</select>
       ${descHtml}
+      ${personHtml}
       <button class="fi-del-btn" onclick="removeFault('${car}','${f.id}')" title="刪除此筆">✕</button>
     </div>`;
   }).join("");
@@ -325,7 +344,8 @@ function updateRowBg(car) {
   if (!row) return;
   const active = faultList[car].filter(f => !f._del);
   let bg = "";
-  if (active.length === 0 || active.every(f => f.status === "均完成")) {
+  const allClear = s => s === "均完成" || s === "已修復完成";
+  if (active.length === 0 || active.every(f => allClear(f.status))) {
     bg = active.length > 0 ? "#f0fdf4" : "";
   } else if (active.some(f => f.status === "故障"))    bg = "#fff1f2";
   else if (active.some(f => f.status === "維修中"))    bg = "#fffbeb";
@@ -336,7 +356,7 @@ function updateStats() {
   let done = 0, fault = 0, wip = 0, pend = 0;
   cars.forEach(car => {
     const active = faultList[car].filter(f => !f._del);
-    if (active.length === 0 || active.every(f => f.status === "均完成")) done++;
+    if (active.length === 0 || active.every(f => f.status === "均完成" || f.status === "已修復完成")) done++;
     else if (active.some(f => f.status === "故障"))   fault++;
     else if (active.some(f => f.status === "維修中"))  wip++;
     else                                               pend++;
@@ -354,7 +374,7 @@ function updateStats() {
 // ── 操作 ──
 function addFault(car) {
   const id = makeId();
-  faultList[car].push({ id, status: "待確認", desc: "", _new: true });
+  faultList[car].push({ id, status: "待確認", desc: "", person: "", _new: true });
   renderCarCell(car);
   updateRowBg(car);
   updateSaveBar();
@@ -371,7 +391,7 @@ function removeFault(car, id) {
   const activeCount = faultList[car].filter(f => !f._del).length;
   if (activeCount <= 1) {
     // 最後一筆：重置為虛擬預設，而非刪除
-    faultList[car] = [{ id: makeId(), status: "待確認", desc: "", _default: true }];
+    faultList[car] = [{ id: makeId(), status: "待確認", desc: "", person: "", _default: true }];
     renderCarCell(car);
     updateRowBg(car);
     updateSaveBar();
@@ -414,6 +434,15 @@ function updateFaultDesc(car, id, val) {
   updateSaveBar();
 }
 
+function updateFaultPerson(car, id, val) {
+  const f = faultList[car].find(f => f.id === id);
+  if (!f) return;
+  f.person = val;
+  if (f._default) { delete f._default; f._new = true; }
+  else if (!f._new) { f._dirty = true; }
+  updateSaveBar();
+}
+
 // ── 儲存列 ──
 function countPending() {
   let count = 0;
@@ -439,7 +468,7 @@ function discardChanges() {
       faultList[car] = savedCloud[car].map(f => ({ ...f }));
     } else {
       // 無雲端資料：重置為虛擬預設
-      faultList[car] = [{ id: makeId(), status: "待確認", desc: "", _default: true }];
+      faultList[car] = [{ id: makeId(), status: "待確認", desc: "", person: "", _default: true }];
     }
     renderCarCell(car);
     updateRowBg(car);
@@ -469,7 +498,7 @@ function commitChanges() {
     const ref = db.collection("faultData").doc(car);
     const data = { updatedAt: now };
     faultList[car].filter(f => !f._del && !f._default).forEach(f => {
-      data[f.id] = { status: f.status, desc: f.desc };
+      data[f.id] = { status: f.status, desc: f.desc, person: f.person || "" };
     });
     faultList[car].filter(f => f._del && !f._new).forEach(f => {
       data[f.id] = firebase.firestore.FieldValue.delete();
@@ -519,7 +548,7 @@ db.collection("faultData").onSnapshot(snap => {
     const cloudItems = [];
     Object.entries(data).forEach(([id, val]) => {
       if (id === "updatedAt" || typeof val !== "object" || val === null) return;
-      cloudItems.push({ id, status: val.status || "待確認", desc: val.desc || "" });
+      cloudItems.push({ id, status: val.status || "待確認", desc: val.desc || "", person: val.person || "" });
     });
 
     if (cloudItems.length > 0) {
