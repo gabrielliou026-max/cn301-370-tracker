@@ -106,6 +106,23 @@
   .fi-person:focus { border-color: #2d4a8a; background: white; }
   .fi-person::placeholder { color: #cbd5e1; }
 
+  .fi-witness-wrap { flex-shrink: 0; display: flex; gap: 4px; margin-top: 2px; }
+  .fi-witness {
+    flex-shrink: 0; width: 110px;
+    border: 1px solid #e2e8f0; border-radius: 8px;
+    padding: 3px 6px; font-size: 0.72rem; font-family: inherit;
+    color: #1a2332; background: #f8fafc; outline: none; cursor: pointer;
+  }
+  .fi-witness:focus { border-color: #2d4a8a; background: white; }
+  .fi-witness-other {
+    flex-shrink: 0; width: 90px;
+    border: 1px solid #e2e8f0; border-radius: 8px;
+    padding: 3px 8px; font-size: 0.72rem; font-family: inherit;
+    color: #1a2332; background: #f8fafc; outline: none;
+  }
+  .fi-witness-other:focus { border-color: #2d4a8a; background: white; }
+  .fi-witness-other::placeholder { color: #cbd5e1; }
+
   .fi-select { margin-top: 2px; }
   .fi-del-btn { margin-top: 2px; }
 
@@ -265,6 +282,8 @@ const STATUS_OPTS = [
 ];
 const STATUS_CLS = Object.fromEntries(STATUS_OPTS.map(o => [o.value, o.cls]));
 
+const WITNESS_NAMES = ["Gabriel","Song","Vicky","Danny","Tony","Peter","Tracy","Joey","Nessa","Jerome","Tim. Y","Mike. C","Ponjus","Arthur","Victoria","Kent","Sandy"];
+
 function makeId() { return "f" + Date.now().toString(36) + Math.random().toString(36).slice(2,5); }
 
 // faultList[car] = [{ id, status, desc, _new?, _dirty?, _del?, _default? }]
@@ -272,7 +291,7 @@ function makeId() { return "f" + Date.now().toString(36) + Math.random().toStrin
 const faultList = {};
 const savedCloud = {}; // 記錄雲端已儲存的資料，供 discard 使用
 cars.forEach(car => {
-  faultList[car] = [{ id: makeId(), status: "待確認", desc: "", person: "", _default: true }];
+  faultList[car] = [{ id: makeId(), status: "待確認", desc: "", person: "", witness: "", _default: true }];
   savedCloud[car] = null;
 });
 
@@ -323,10 +342,28 @@ function renderCarCell(car) {
                 placeholder="🙋 修復人員 Repaired by"
                 oninput="updateFaultPerson('${car}','${f.id}',this.value)">`
       : "";
+    // 已修復完成 才顯示見證人欄位
+    const isOtherWitness = f.witness && !WITNESS_NAMES.includes(f.witness);
+    const showWitnessOther = f._witnessOther || isOtherWitness;
+    const witnessHtml = f.status === "已修復完成"
+      ? `<div class="fi-witness-wrap">
+          <select class="fi-witness" onchange="updateFaultWitnessSelect('${car}','${f.id}',this)">
+            <option value="">👁 見證人 Witness</option>
+            ${WITNESS_NAMES.map(n => `<option value="${escH(n)}"${f.witness===n?" selected":""}>${escH(n)}</option>`).join("")}
+            <option value="__other__"${showWitnessOther?" selected":""}>其他 Other…</option>
+          </select>
+          ${showWitnessOther
+            ? `<input class="fi-witness-other" type="text" value="${escH(isOtherWitness ? f.witness : '')}"
+                      placeholder="姓名 Name"
+                      oninput="updateFaultWitness('${car}','${f.id}',this.value)">`
+            : ""}
+        </div>`
+      : "";
     return `<div class="fault-item${itemCls}" id="fi_${car}_${f.id}">
       <select class="fi-select ${cls}" onchange="updateFaultStatus('${car}','${f.id}',this)">${opts}</select>
       ${descHtml}
       ${personHtml}
+      ${witnessHtml}
       <button class="fi-del-btn" onclick="removeFault('${car}','${f.id}')" title="刪除此筆">✕</button>
     </div>`;
   }).join("");
@@ -374,7 +411,7 @@ function updateStats() {
 // ── 操作 ──
 function addFault(car) {
   const id = makeId();
-  faultList[car].push({ id, status: "待確認", desc: "", person: "", _new: true });
+  faultList[car].push({ id, status: "待確認", desc: "", person: "", witness: "", _new: true });
   renderCarCell(car);
   updateRowBg(car);
   updateSaveBar();
@@ -391,7 +428,7 @@ function removeFault(car, id) {
   const activeCount = faultList[car].filter(f => !f._del).length;
   if (activeCount <= 1) {
     // 最後一筆：重置為虛擬預設，而非刪除
-    faultList[car] = [{ id: makeId(), status: "待確認", desc: "", person: "", _default: true }];
+    faultList[car] = [{ id: makeId(), status: "待確認", desc: "", person: "", witness: "", _default: true }];
     renderCarCell(car);
     updateRowBg(car);
     updateSaveBar();
@@ -443,6 +480,33 @@ function updateFaultPerson(car, id, val) {
   updateSaveBar();
 }
 
+function updateFaultWitnessSelect(car, id, sel) {
+  const f = faultList[car].find(f => f.id === id);
+  if (!f) return;
+  if (sel.value === "__other__") {
+    f._witnessOther = true;
+    if (WITNESS_NAMES.includes(f.witness)) f.witness = "";
+    renderCarCell(car);
+    setTimeout(() => {
+      const inp = document.querySelector(`#fi_${car}_${id} .fi-witness-other`);
+      if (inp) inp.focus();
+    }, 0);
+  } else {
+    f._witnessOther = false;
+    updateFaultWitness(car, id, sel.value);
+    renderCarCell(car);
+  }
+}
+
+function updateFaultWitness(car, id, val) {
+  const f = faultList[car].find(f => f.id === id);
+  if (!f) return;
+  f.witness = val;
+  if (f._default) { delete f._default; f._new = true; }
+  else if (!f._new) { f._dirty = true; }
+  updateSaveBar();
+}
+
 // ── 儲存列 ──
 function countPending() {
   let count = 0;
@@ -468,7 +532,7 @@ function discardChanges() {
       faultList[car] = savedCloud[car].map(f => ({ ...f }));
     } else {
       // 無雲端資料：重置為虛擬預設
-      faultList[car] = [{ id: makeId(), status: "待確認", desc: "", person: "", _default: true }];
+      faultList[car] = [{ id: makeId(), status: "待確認", desc: "", person: "", witness: "", _default: true }];
     }
     renderCarCell(car);
     updateRowBg(car);
@@ -498,7 +562,7 @@ function commitChanges() {
     const ref = db.collection("faultData").doc(car);
     const data = { updatedAt: now };
     faultList[car].filter(f => !f._del && !f._default).forEach(f => {
-      data[f.id] = { status: f.status, desc: f.desc, person: f.person || "" };
+      data[f.id] = { status: f.status, desc: f.desc, person: f.person || "", witness: f.witness || "" };
     });
     faultList[car].filter(f => f._del && !f._new).forEach(f => {
       data[f.id] = firebase.firestore.FieldValue.delete();
@@ -548,7 +612,7 @@ db.collection("faultData").onSnapshot(snap => {
     const cloudItems = [];
     Object.entries(data).forEach(([id, val]) => {
       if (id === "updatedAt" || typeof val !== "object" || val === null) return;
-      cloudItems.push({ id, status: val.status || "待確認", desc: val.desc || "", person: val.person || "" });
+      cloudItems.push({ id, status: val.status || "待確認", desc: val.desc || "", person: val.person || "", witness: val.witness || "" });
     });
 
     if (cloudItems.length > 0) {
