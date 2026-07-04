@@ -1,0 +1,4 @@
+# 每日產出的報告，不進版控
+故障日報_*.docx
+*.docx
+pdf_baseline.json
