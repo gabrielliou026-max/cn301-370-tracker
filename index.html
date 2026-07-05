@@ -665,8 +665,9 @@ function countPending() {
 }
 
 function updateSaveBar() {
+  // 注意：不可依賴 #saveBarCount，innerHTML 重寫後該 id 即消失，
+  // 舊寫法會在第二次呼叫時拋錯，導致儲存後無法再輸入下一筆
   const count = countPending();
-  document.getElementById("saveBarCount").textContent = count;
   document.getElementById("saveBarText").innerHTML =
     `📝 你有 <strong>${count}</strong> 項變更尚未儲存　Unsaved changes`;
   document.getElementById("saveBar").style.display = count > 0 ? "flex" : "none";
@@ -755,7 +756,11 @@ function commitChanges() {
       renderCarCell(car);
     });
     document.getElementById("saveBarText").innerHTML = "✅ 已成功儲存並同步！Saved &amp; synced!";
-    setTimeout(() => { document.getElementById("saveBar").style.display = "none"; }, 1800);
+    // 1.8 秒內若使用者又開始輸入下一筆，不可把儲存列藏起來
+    setTimeout(() => {
+      if (countPending() === 0) document.getElementById("saveBar").style.display = "none";
+      else updateSaveBar();
+    }, 1800);
   }).catch(err => {
     document.getElementById("saveBarText").innerHTML = "❌ 儲存失敗，請重試　Save failed";
     console.warn("batch commit failed", err);
