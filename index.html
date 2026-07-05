@@ -814,12 +814,15 @@ function trackLatestUpdated(iso, by) {
   }
 }
 function updateFooterUpdated() {
-  const el = document.getElementById("footerUpdated");
-  if (!latestUpdatedAt) { el.textContent = "-"; return; }
+  const footer = document.getElementById("footerUpdated");
+  if (!latestUpdatedAt) { footer.textContent = "-"; return; }
   const d = new Date(latestUpdatedAt);
-  if (isNaN(d.getTime())) { el.textContent = "-"; return; }
+  if (isNaN(d.getTime())) { footer.textContent = "-"; return; }
   const t = `${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())} ${pad(d.getHours())}:${pad(d.getMinutes())}`;
-  el.textContent = latestUpdatedBy ? `${t}（${latestUpdatedBy}）` : t;
+  const text = latestUpdatedBy ? `${t}（${latestUpdatedBy}）` : t;
+  footer.textContent = text;
+  // 最上方 header 徽章同步顯示最後更新時間與人員
+  document.getElementById("headerDate").textContent = `🕐 最後更新 ${text}`;
 }
 
 // 更新人員下拉選單：名單＋明確的「其他」自訂選項
