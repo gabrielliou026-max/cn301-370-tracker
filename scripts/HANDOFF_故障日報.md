@@ -1,8 +1,39 @@
-# DT&E 故障日報 — 專案交接文件 (Handoff)
+# DT&E 故障日報 & 追蹤網站 — 專案交接文件 (Handoff)
 
-> 這份文件用於把「DT&E 故障日報」產製工作轉移到新的對話框。
+> 這份文件用於把「CN301-370 故障追蹤網站 + DT&E 故障日報」維護工作轉移到新的對話框。
 > 貼上或附上此檔給新對話，即可無縫接手。
-> 最後更新：2026-07-04
+> 最後更新：2026-07-05
+
+---
+
+## 🚨 緊急待辦：Firestore 規則 2026-07-08 到期
+
+目前 Firestore 是「測試模式」預設規則：
+
+```
+allow read, write: if request.time < timestamp.date(2026, 7, 8);
+```
+
+**UTC 7/8 零點（台灣時間 7/8 早上 8 點）過後，所有讀寫都會被拒絕**：
+網站顯示紅色連線錯誤、儲存失敗、日報腳本抓不到資料。資料本身不會消失，改規則即恢復。
+
+**處理方式**（需使用者本人到 Firebase Console → Firestore Database → 規則 Rules → 貼上 → 發布）：
+
+```
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // 只開放 faultData，其他路徑一律拒絕
+    match /faultData/{car} {
+      allow read, write: if true;
+    }
+  }
+}
+```
+
+此版無到期日、範圍縮至 faultData。注意：仍是公開可寫（與現況相同），
+之後若要真正防外人寫入需加匿名登入＋規則驗證（網站端需改程式）。
+改規則前建議先按網站右上「📥 備份」下載 JSON 快照。
 
 ---
 
@@ -14,31 +45,30 @@
    報告腳本只做 GET 讀取，請維持這個設計，不要加入寫入邏輯。
 2. **要改資料庫，先明確確認**：只有在使用者「明講」要修改某筆資料時才動，動之前先列出要改什麼、請使用者確認。
 3. **改網站/腳本走分支 + 先確認**：修改 `index.html` 或 `scripts/` 前，先說明改動範圍，
-   使用者同意後才 commit / push。避免直接大改 `main`。
-4. **不要把金鑰再寫死擴散**：API key 屬 Firebase web key（詳見第 3 節備註），勿再複製到新檔案。
+   使用者同意後才 commit / push；合併上線（merge 到 main）前再確認一次。
+4. **不要把金鑰再寫死擴散**：API key 屬 Firebase web key，勿再複製到新檔案。
 
 ---
 
-## 1. 專案目標
+## 1. 專案組成
 
-從 Firebase Firestore 抓取 CN301–CN370 車廂的故障資料，產製 **DT&E 故障日報 (Daily Fault Report)** Word 文件，含**完整中英對照翻譯**，格式對齊既有 PDF 樣式。
+| 部分 | 說明 |
+|---|---|
+| **追蹤網站** | `index.html` 單檔，GitHub Pages 部署（main 分支），多人即時填報故障 |
+| **日報腳本** | `scripts/gen_word_report.py`，抓 Firestore 產 Word 故障日報（中英對照） |
 
 ---
 
-## 2. 關鍵檔案位置
+## 2. 關鍵檔案位置（已全部 commit 進 repo，不再依賴 scratchpad）
 
 | 檔案 | 路徑 | 用途 |
 |---|---|---|
-| **主產製腳本** | `scratchpad/gen_word_report.py` | 抓 Firestore → 產 Word。**最重要的檔案** |
-| 比對腳本 | `scratchpad/compare_report.py` | 比對 PDF 基準 vs 現行 Firestore 資料 |
-| PDF 基準快照 | `scratchpad/pdf_baseline.json` | 解析出的昨晚 PDF 每車故障資料 |
-| 產出報告 | `scratchpad/故障日報_YYYY-MM-DD.docx` | 每日產出 |
-| 網站主檔 | `/home/user/cn301-370-tracker/index.html` | GitHub Pages 單檔網站 |
+| **主產製腳本** | `scripts/gen_word_report.py` | 抓 Firestore → 產 Word。**最重要的檔案** |
+| 比對腳本 | `scripts/compare_report.py` | 比對 PDF 基準 vs 現行 Firestore 資料 |
+| 網站主檔 | `index.html` | GitHub Pages 單檔網站 |
+| 本文件 | `scripts/HANDOFF_故障日報.md` | 交接文件 |
 
-> scratchpad 完整路徑前綴：
-> `/tmp/claude-0/-home-user-cn301-370-tracker/601937c1-2176-5d8c-aa25-0c267b631065/scratchpad/`
-> ⚠️ 此為 session 專屬暫存區，**新 session 會清空**。若要保留 `gen_word_report.py`，
-> 建議 commit 進 repo 或請使用者另存。
+> 產出的 `.docx` 報告與 `pdf_baseline.json` 屬每日產物，不進 repo（見 `scripts/.gitignore`）。
 
 ---
 
@@ -53,8 +83,16 @@ Collection = faultData   (每個 doc = 一台車，doc id = 車號如 CN301)
 
 **抓取方式**：REST API，`GET {BASE_URL}/faultData?key={API_KEY}&pageSize=200`
 
-**每個 fault item 欄位**：`status`, `desc`, `person`(修復人員), `witness`(見證人)
-- doc 內以 map 型態存放，`updatedAt` 欄位需略過。
+**文件結構**（每個 doc = 一台車）：
+- 文件層級欄位（字串，**解析時需略過**）：
+  - `updatedAt`：最後儲存時間（ISO 8601）
+  - `updatedBy`：最後儲存人員名字（2026-07-05 新增）
+- 故障項目（map 型態，key 為隨機 id 如 `f1782292280888zls`）：
+  `status`, `desc`, `person`(修復人員), `witness`(見證人)
+
+> `gen_word_report.py` 以 `"mapValue" not in fval` 過濾欄位，
+> `updatedAt`/`updatedBy` 均為字串會自動略過，**腳本無需修改**。
+> 未來若新增其他文件層級欄位，維持字串型態即可相容。
 
 ---
 
@@ -79,7 +117,7 @@ ROTATIONS = [
 ## 5. 狀態定義與排序
 
 ```python
-STATUS_ORDER = {"已修復完成":0, "故障":1, "維修中":2, "待確認":3}   # 表格內排序用
+STATUS_ORDER = {"已修復完成":0, "故障":1, "維修中":2, "待確認":3}   # Word 報告表格內排序用
 ```
 
 | 中文 | English | 顏色 (RGB) |
@@ -88,6 +126,9 @@ STATUS_ORDER = {"已修復完成":0, "故障":1, "維修中":2, "待確認":3}  
 | 已修復完成 | Fixed | 0E7490 (青) |
 | 維修中 | Under Repair | 7B3F00 (棕) |
 | 待確認 | Pending | 1F497D (藍) |
+
+> 網站顯示排序與報告不同：故障 → 維修中 → 待確認 → 已修復完成 → 均完成
+> （`index.html` 的 `STATUS_SORT`），修改任一邊時注意兩者是刻意不同的。
 
 ---
 
@@ -101,8 +142,7 @@ STATUS_ORDER = {"已修復完成":0, "故障":1, "維修中":2, "待確認":3}  
   ```
   C_NO=267(#) | C_ST=889(狀態) | C_ZH=2312(中文) | C_EN=2934(English) | C_RP=1156(人員) | C_WT=1156(見證)
   ```
-- 車廂標題：藍色左側色條 + 車號
-- 輪次標題：深藍底白字
+- 車廂標題：藍色左側色條 + 車號；輪次標題：深藍底白字
 - 無紀錄車廂顯示「無故障紀錄 No fault records」
 
 ---
@@ -120,31 +160,10 @@ STATUS_ORDER = {"已修復完成":0, "故障":1, "維修中":2, "待確認":3}  
 
 ---
 
-## 8. 最新狀態 (2026-07-02 報告)
-
-| 指標 | 數值 |
-|---|---|
-| 總車數 Total Cars | 57 |
-| 有紀錄車廂 | 54 |
-| 故障 Fault | 66 |
-| 已修復完成 Fixed | 140 |
-| 維修中 Under Repair | 3 |
-| 待確認 Pending | 74 |
-| **總項目數** | **283** |
-
-**與前一晚 PDF 相比的變化**（+8 項）：
-- 已修復完成 +7、待確認 +1
-- 狀態變動：CN336(+3修復)、CN340(+2修復)、CN347(+1修復)、CN311(+1修復)
-- 待確認轉故障：CN306(+3)
-- 新增待確認：CN303/308/328(各+3)、CN363(+2)、CN329(+1)
-- 刪除重複項：CN353、CN322、CN364
-
----
-
-## 9. 產製指令
+## 8. 產製指令
 
 ```bash
-cd <scratchpad>
+cd scripts
 python3 gen_word_report.py
 # 輸出：故障日報_YYYY-MM-DD.docx (TODAY 用系統當天日期)
 ```
@@ -154,27 +173,60 @@ python3 gen_word_report.py
 **已知非致命警告**：
 `FutureWarning: Truth-testing of elements...`（`tbl.find(qn("w:tblPr")) or ...` 造成）— 不影響輸出。
 
+**最後一次產出（2026-07-02）**：總 283 項 = 故障 66 / 已修復 140 / 維修中 3 / 待確認 74，
+總車數 57、有紀錄 54。
+
+---
+
+## 9. 網站功能現況（2026-07-05 大改版，PR #11–#15）
+
+### 填報流程
+- 每台車可多筆故障，欄位：狀態下拉 / 描述 / 修復人員 /（已修復時）見證人
+- **儲存需填更新人員**：確認視窗有下拉名單＋「其他 Other…」自訂輸入（必填、
+  空白會被 `trim()` 擋下），名字記在 localStorage 下次自動帶入
+- 儲存寫入文件層級 `updatedBy` + `updatedAt`
+
+### 顯示
+- Header 右上徽章顯示「🕐 最後更新 時間（人名）」（取全部車 updatedAt 最大值）
+- 統計卡片可點擊篩選狀態（再點一次取消）；搜尋框可搜車號/故障描述
+- 表頭 sticky；手機（≤640px）自動切換卡片式排版
+- 雲端項目依 `STATUS_SORT` 排序顯示
+
+### 防呆
+- 未儲存變更離開頁面會警告（beforeunload）
+- 連線狀態橫幅：載入中（藍）/ 連線失敗、10 秒逾時（紅）
+- 多人同時編輯：快照只重繪有變動的車，正在編輯的車格延後重繪（不失焦）
+- 右上「📥 備份」一鍵下載雲端資料 JSON 快照
+
+### 重要歷史 bug（已修，PR #14）
+`updateSaveBar()` 原版依賴 `#saveBarCount` id，innerHTML 重寫後 id 消失導致
+第二次呼叫起全部拋錯 → 儲存後無法輸入下一筆。**改此函式時勿走回頭路。**
+
 ---
 
 ## 10. Git 資訊
 
 - Repo: `gabrielliou026-max/cn301-370-tracker`
-- 開發分支: `claude/website-content-modify-pe7y5j`
-- 網站部署: `main` branch → GitHub Pages（單檔 `index.html`）
+- 開發分支: `claude/read-markdown-file-6whg0i`（每次合併後重置到最新 main 再開工）
+- 網站部署: `main` branch → GitHub Pages（單檔 `index.html`），**merge 到 main 即上線**
+- 近期 PR：#11 網站優化 / #12 updatedBy / #13 人員選單 / #14 連續輸入修復 / #15 更新時間移頂端
 
 ---
 
 ## 11. 常見後續任務
 
-- **產今日報告**：直接跑 `gen_word_report.py`（會用當天日期）
-- **比對昨晚 vs 現在有無新增/更新**：跑 `compare_report.py`，或重新解析 PDF 基準
+- **🚨 7/8 前改 Firestore 規則**：見文件最上方緊急待辦
+- **產今日報告**：`cd scripts && python3 gen_word_report.py`
+- **比對昨晚 vs 現在**：跑 `compare_report.py`，或重新解析 PDF 基準
 - **補翻譯**：見第 7 節流程
 - **調整輪次/排除車**：改 `gen_word_report.py` 的 `ROTATIONS`，與 `index.html` 的 `EXCLUDED` 保持一致
+- **進一步防護（可選）**：匿名登入＋規則驗證、每筆故障加時間戳（使用者已知悉、暫緩）
 
 ---
 
 ## 12. 給新對話的開場提示 (建議貼這段)
 
-> 我在做 DT&E 故障日報產製。主腳本是 `gen_word_report.py`（附上或在 scratchpad），
-> 從 Firestore `faultData` collection 抓 57 台車故障資料產 Word 報告，含中英翻譯。
-> 請參考這份 HANDOFF 文件。今天請幫我：〔在此填入需求，例如「產今日報告並補齊翻譯」〕
+> 我在維護 CN301-370 故障追蹤系統：網站 `index.html`（GitHub Pages）＋
+> 日報腳本 `scripts/gen_word_report.py`（從 Firestore `faultData` 抓 57 台車資料產 Word 報告）。
+> 請先讀 repo 裡的 `scripts/HANDOFF_故障日報.md` 交接文件並遵守其資料保護規則。
+> 今天請幫我：〔在此填入需求，例如「產今日報告並補齊翻譯」〕
