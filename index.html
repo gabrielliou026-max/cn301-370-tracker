@@ -32,7 +32,12 @@
     flex: 1; min-width: 100px; background: #f8fafc;
     border-radius: 10px; border: 1px solid #e2e8f0;
     padding: 12px 16px; text-align: center;
+    cursor: pointer; user-select: none;
+    transition: box-shadow 0.15s, transform 0.1s;
   }
+  .stat-card:hover { box-shadow: 0 2px 8px rgba(0,0,0,0.1); }
+  .stat-card:active { transform: scale(0.97); }
+  .stat-card.active { outline: 2px solid #2d4a8a; background: #eff6ff; }
   .stat-card .num { font-size: 1.75rem; font-weight: 800; line-height: 1; }
   .stat-card .lbl { font-size: 0.7rem; color: #64748b; margin-top: 4px; line-height: 1.4; }
   .s-total .num { color: #1a2f5e; }
@@ -41,19 +46,50 @@
   .s-wip   .num { color: #d97706; }
   .s-pend  .num { color: #94a3b8; }
 
+  .export-btn {
+    background: rgba(255,255,255,0.15); color: white;
+    border: 1px solid rgba(255,255,255,0.3); border-radius: 20px;
+    padding: 6px 14px; font-size: 0.8rem; font-family: inherit;
+    cursor: pointer; white-space: nowrap; transition: background 0.15s;
+  }
+  .export-btn:hover { background: rgba(255,255,255,0.28); }
+
   .progress-wrap { padding: 0 28px 14px; background: white; border-bottom: 1px solid #dde3ed; }
   .progress-track { height: 10px; background: #e2e8f0; border-radius: 6px; overflow: hidden; margin-top: 2px; }
   .progress-fill { height: 100%; background: linear-gradient(90deg, #16a34a, #22c55e); border-radius: 6px; transition: width 0.5s ease; }
   .progress-label { font-size: 0.75rem; color: #64748b; margin-bottom: 4px; }
 
-  .table-wrap { padding: 20px 28px; overflow-x: auto; }
+  .conn-banner {
+    padding: 10px 28px; font-size: 0.85rem;
+    background: #eff6ff; color: #1d4ed8; border-bottom: 1px solid #dde3ed;
+  }
+  .conn-banner.error { background: #fef2f2; color: #b91c1c; }
+
+  .filter-bar { display: flex; align-items: center; gap: 12px; padding: 14px 28px 0; flex-wrap: wrap; }
+  .search-box {
+    width: 340px; max-width: 100%;
+    border: 1px solid #e2e8f0; border-radius: 20px;
+    padding: 8px 14px; font-size: 0.85rem; font-family: inherit;
+    outline: none; background: white;
+  }
+  .search-box:focus { border-color: #2d4a8a; box-shadow: 0 0 0 3px rgba(45,74,138,0.12); }
+  .filter-hint { font-size: 0.78rem; color: #2d4a8a; font-weight: 600; }
+
+  .table-wrap { padding: 20px 28px; }
   table {
     width: 100%; border-collapse: collapse; background: white;
-    border-radius: 12px; overflow: hidden;
+    border-radius: 12px;
     box-shadow: 0 1px 6px rgba(0,0,0,0.08); font-size: 0.85rem;
   }
   thead { background: #1a2f5e; color: white; }
-  thead th { padding: 12px 14px; text-align: left; font-weight: 600; font-size: 0.78rem; letter-spacing: 0.4px; }
+  thead th {
+    padding: 12px 14px; text-align: left; font-weight: 600; font-size: 0.78rem; letter-spacing: 0.4px;
+    position: sticky; top: 0; background: #1a2f5e; z-index: 5;
+  }
+  thead th:first-child { border-top-left-radius: 12px; }
+  thead th:last-child { border-top-right-radius: 12px; }
+  tbody tr:last-child td:first-child { border-bottom-left-radius: 12px; }
+  tbody tr:last-child td:last-child { border-bottom-right-radius: 12px; }
   .th-no  { width: 42px; text-align: center; }
   .th-car { width: 100px; white-space: nowrap; }
   .th-fault { min-width: 280px; }
@@ -78,7 +114,7 @@
     border: 1px solid #e2e8f0; border-radius: 16px;
     padding: 3px 8px; font-size: 0.72rem; font-weight: 600;
     font-family: inherit; cursor: pointer; outline: none;
-    white-space: nowrap; flex-shrink: 0;
+    white-space: nowrap; flex-shrink: 0; margin-top: 2px;
     transition: border-color 0.15s, background 0.15s;
   }
   .fi-select:focus { border-color: #2d4a8a; }
@@ -123,13 +159,11 @@
   .fi-witness-other:focus { border-color: #2d4a8a; background: white; }
   .fi-witness-other::placeholder { color: #cbd5e1; }
 
-  .fi-select { margin-top: 2px; }
-  .fi-del-btn { margin-top: 2px; }
-
   .fi-del-btn {
     flex-shrink: 0; border: none; background: none;
     color: #94a3b8; font-size: 0.9rem; cursor: pointer;
     padding: 0 4px; line-height: 1; border-radius: 4px;
+    margin-top: 2px;
     transition: color 0.15s, background 0.15s;
   }
   .fi-del-btn:hover { color: #dc2626; background: #fee2e2; }
@@ -197,6 +231,43 @@
     text-align: center; padding: 14px; font-size: 0.72rem; color: #94a3b8;
     border-top: 1px solid #e2e8f0; background: white;
   }
+
+  /* ── 手機版：卡片式排版 ── */
+  @media (max-width: 640px) {
+    body { padding-bottom: 130px; }
+    header { padding: 12px 14px; gap: 10px; flex-wrap: wrap; }
+    header > div:first-child { font-size: 1.5rem; }
+    .summary-bar { padding: 10px 12px; gap: 8px; }
+    .stat-card { min-width: calc(33.3% - 8px); padding: 8px 6px; }
+    .stat-card .num { font-size: 1.35rem; }
+    .progress-wrap { padding: 0 12px 12px; }
+    .conn-banner { padding: 10px 12px; }
+    .filter-bar { padding: 12px 12px 0; }
+    .search-box { width: 100%; font-size: 16px; }
+    .table-wrap { padding: 12px; }
+    table { display: block; background: transparent; border-radius: 0; box-shadow: none; }
+    thead { display: none; }
+    tbody { display: block; }
+    tbody tr {
+      display: block; background: white; border: 1px solid #e2e8f0;
+      border-radius: 12px; margin-bottom: 12px; padding: 12px;
+      box-shadow: 0 1px 4px rgba(0,0,0,0.06);
+    }
+    tbody td { display: block; padding: 0; }
+    .td-no { display: none; }
+    .td-car { font-size: 1.05rem; padding-bottom: 8px; }
+    /* 故障項目改為多列排版，輸入欄位放大方便觸控（16px 避免 iOS 自動縮放） */
+    .fault-item { flex-wrap: wrap; gap: 6px; padding: 8px; }
+    .fi-select { order: 1; max-width: calc(100% - 44px); font-size: 16px; }
+    .fi-del-btn { order: 2; margin-left: auto; font-size: 1.15rem; padding: 4px 8px; }
+    .fi-desc { order: 3; flex-basis: 100%; font-size: 16px; }
+    .fi-person { order: 4; width: 100%; padding: 8px 10px; font-size: 16px; }
+    .fi-witness-wrap { order: 5; width: 100%; }
+    .fi-witness { flex: 1; width: auto; padding: 8px 10px; font-size: 16px; }
+    .fi-witness-other { flex: 1; width: auto; padding: 8px 10px; font-size: 16px; }
+    .add-fault-btn { padding: 8px 14px; font-size: 0.85rem; }
+    .save-bar { padding: 10px 12px; gap: 10px; }
+  }
 </style>
 </head>
 <body>
@@ -208,19 +279,29 @@
     <p>作業單位 Unit：Communications Maintenance　｜　車廂數量 Total：57 units</p>
   </div>
   <div class="badge" id="headerDate">載入中…</div>
+  <button class="export-btn" onclick="exportBackup()" title="下載目前雲端資料的 JSON 備份">📥 備份 Backup</button>
 </header>
 
 <div class="summary-bar">
-  <div class="stat-card s-total"><div class="num" id="statTotal">57</div><div class="lbl">總台數<br>Total</div></div>
-  <div class="stat-card s-done"><div class="num" id="statDone">0</div><div class="lbl">無故障<br>All Clear</div></div>
-  <div class="stat-card s-fault"><div class="num" id="statFault">0</div><div class="lbl">故障<br>Fault</div></div>
-  <div class="stat-card s-wip"><div class="num" id="statWip">0</div><div class="lbl">維修中<br>Under Repair</div></div>
-  <div class="stat-card s-pend"><div class="num" id="statPend">0</div><div class="lbl">待確認<br>Pending</div></div>
+  <div class="stat-card s-total" onclick="setFilter(null)" title="顯示全部"><div class="num" id="statTotal">57</div><div class="lbl">總台數<br>Total</div></div>
+  <div class="stat-card s-done" onclick="setFilter('done')" title="點擊篩選"><div class="num" id="statDone">0</div><div class="lbl">無故障<br>All Clear</div></div>
+  <div class="stat-card s-fault" onclick="setFilter('fault')" title="點擊篩選"><div class="num" id="statFault">0</div><div class="lbl">故障<br>Fault</div></div>
+  <div class="stat-card s-wip" onclick="setFilter('wip')" title="點擊篩選"><div class="num" id="statWip">0</div><div class="lbl">維修中<br>Under Repair</div></div>
+  <div class="stat-card s-pend" onclick="setFilter('pend')" title="點擊篩選"><div class="num" id="statPend">0</div><div class="lbl">待確認<br>Pending</div></div>
 </div>
 
 <div class="progress-wrap">
-  <div class="progress-label" id="progressLabel">無故障台數 All Clear：0 / 54 units</div>
+  <div class="progress-label" id="progressLabel">無故障台數 All Clear：0 / 57 units</div>
   <div class="progress-track"><div class="progress-fill" id="progressFill" style="width:0%"></div></div>
+</div>
+
+<div class="conn-banner" id="connBanner">⏳ 正在載入雲端資料… Loading cloud data…</div>
+
+<div class="filter-bar">
+  <input class="search-box" id="searchBox" type="search"
+         placeholder="🔍 搜尋車號或故障描述 Search car no. / description"
+         oninput="searchQuery=this.value;applyFilter()">
+  <span class="filter-hint" id="filterHint"></span>
 </div>
 
 <div class="table-wrap">
@@ -281,6 +362,8 @@ const STATUS_OPTS = [
   { value: "待確認",    label: "⏳ 待確認 Pending",         cls: "f-pending" },
 ];
 const STATUS_CLS = Object.fromEntries(STATUS_OPTS.map(o => [o.value, o.cls]));
+// 雲端項目顯示排序：故障 → 維修中 → 待確認 → 已修復 → 均完成
+const STATUS_SORT = { "故障": 0, "維修中": 1, "待確認": 2, "已修復完成": 3, "均完成": 4 };
 
 const WITNESS_NAMES = ["Gabriel","Song","Vicky","Danny","Tony","Peter","Tracy","Joey","Nessa","Jerome","Tim. Y","Mike. C","Ponjus","Arthur","Victoria","Kent","Sandy"];
 
@@ -316,8 +399,6 @@ function renderAll() {
   const now = new Date();
   document.getElementById("headerDate").textContent =
     `📅 ${now.getFullYear()}-${pad(now.getMonth()+1)}-${pad(now.getDate())}`;
-  document.getElementById("footerUpdated").textContent =
-    `${now.getFullYear()}-${pad(now.getMonth()+1)}-${pad(now.getDate())}`;
 }
 
 function renderCarCell(car) {
@@ -376,27 +457,35 @@ function renderCarCell(car) {
   cell.querySelectorAll(".fi-desc").forEach(ta => autoResize(ta));
 }
 
+// 車輛狀態分類：done(無故障) / fault(故障) / wip(維修中) / pend(待確認)
+function carCategory(car) {
+  const active = faultList[car].filter(f => !f._del);
+  if (active.length === 0 || active.every(f => f.status === "均完成" || f.status === "已修復完成")) return "done";
+  if (active.some(f => f.status === "故障"))  return "fault";
+  if (active.some(f => f.status === "維修中")) return "wip";
+  return "pend";
+}
+
 function updateRowBg(car) {
   const row = document.getElementById(`row_${car}`);
   if (!row) return;
   const active = faultList[car].filter(f => !f._del);
+  const cat = carCategory(car);
   let bg = "";
-  const allClear = s => s === "均完成" || s === "已修復完成";
-  if (active.length === 0 || active.every(f => allClear(f.status))) {
-    bg = active.length > 0 ? "#f0fdf4" : "";
-  } else if (active.some(f => f.status === "故障"))    bg = "#fff1f2";
-  else if (active.some(f => f.status === "維修中"))    bg = "#fffbeb";
+  if (cat === "done")       bg = active.length > 0 ? "#f0fdf4" : "";
+  else if (cat === "fault") bg = "#fff1f2";
+  else if (cat === "wip")   bg = "#fffbeb";
   row.style.background = bg;
 }
 
 function updateStats() {
   let done = 0, fault = 0, wip = 0, pend = 0;
   cars.forEach(car => {
-    const active = faultList[car].filter(f => !f._del);
-    if (active.length === 0 || active.every(f => f.status === "均完成" || f.status === "已修復完成")) done++;
-    else if (active.some(f => f.status === "故障"))   fault++;
-    else if (active.some(f => f.status === "維修中"))  wip++;
-    else                                               pend++;
+    const cat = carCategory(car);
+    if (cat === "done")       done++;
+    else if (cat === "fault") fault++;
+    else if (cat === "wip")   wip++;
+    else                      pend++;
   });
   document.getElementById("statDone").textContent  = done;
   document.getElementById("statFault").textContent = fault;
@@ -406,6 +495,40 @@ function updateStats() {
   document.getElementById("progressFill").style.width = rate + "%";
   document.getElementById("progressLabel").textContent =
     `無故障台數 All Clear：${done} / ${TOTAL} units`;
+  applyFilter();
+}
+
+// ── 搜尋 / 篩選 ──
+let filterStatus = null;   // null | done | fault | wip | pend
+let searchQuery = "";
+const FILTER_NAMES = { done: "無故障 All Clear", fault: "故障 Fault", wip: "維修中 Under Repair", pend: "待確認 Pending" };
+
+function setFilter(k) {
+  filterStatus = (k && filterStatus !== k) ? k : null;   // 再點一次取消
+  applyFilter();
+}
+
+function applyFilter() {
+  const q = searchQuery.trim().toLowerCase();
+  cars.forEach(car => {
+    const row = document.getElementById(`row_${car}`);
+    if (!row) return;
+    // 正在編輯的列不隱藏，避免輸入到一半整列消失
+    if (row.contains(document.activeElement)) { row.style.display = ""; return; }
+    let show = !filterStatus || carCategory(car) === filterStatus;
+    if (show && q) {
+      show = car.toLowerCase().includes(q) ||
+             faultList[car].some(f => !f._del && (f.desc || "").toLowerCase().includes(q));
+    }
+    row.style.display = show ? "" : "none";
+  });
+  document.querySelectorAll(".stat-card.active").forEach(el => el.classList.remove("active"));
+  if (filterStatus) {
+    const card = document.querySelector(`.s-${filterStatus}`);
+    if (card) card.classList.add("active");
+  }
+  document.getElementById("filterHint").textContent =
+    filterStatus ? `篩選中 Filter：${FILTER_NAMES[filterStatus]}（再點一次卡片取消）` : "";
 }
 
 // ── 操作 ──
@@ -485,7 +608,13 @@ function updateFaultWitnessSelect(car, id, sel) {
   if (!f) return;
   if (sel.value === "__other__") {
     f._witnessOther = true;
-    if (WITNESS_NAMES.includes(f.witness)) f.witness = "";
+    if (WITNESS_NAMES.includes(f.witness)) {
+      // 清空見證人也是一項資料變更，需標記 dirty 以免被雲端同步蓋回
+      f.witness = "";
+      if (f._default) { delete f._default; f._new = true; }
+      else if (!f._new) f._dirty = true;
+      updateSaveBar();
+    }
     renderCarCell(car);
     setTimeout(() => {
       const inp = document.querySelector(`#fi_${car}_${id} .fi-witness-other`);
@@ -585,6 +714,77 @@ function commitChanges() {
   });
 }
 
+// ── 匯出雲端資料備份 (JSON) ──
+function exportBackup() {
+  const out = { _meta: { exportedAt: new Date().toISOString(), collection: "faultData" } };
+  let count = 0;
+  cars.forEach(car => {
+    if (savedCloud[car] && savedCloud[car].length > 0) {
+      out[car] = {};
+      savedCloud[car].forEach(f => {
+        out[car][f.id] = { status: f.status, desc: f.desc, person: f.person || "", witness: f.witness || "" };
+        count++;
+      });
+    }
+  });
+  if (count === 0 && !confirm("目前尚未載入任何雲端資料，仍要匯出空備份嗎？\nNo cloud data loaded yet. Export empty backup?")) return;
+  const now = new Date();
+  const name = `faultData_backup_${now.getFullYear()}-${pad(now.getMonth()+1)}-${pad(now.getDate())}_${pad(now.getHours())}${pad(now.getMinutes())}.json`;
+  const blob = new Blob([JSON.stringify(out, null, 2)], { type: "application/json" });
+  const a = document.createElement("a");
+  a.href = URL.createObjectURL(blob);
+  a.download = name;
+  a.click();
+  URL.revokeObjectURL(a.href);
+}
+
+// ── 連線狀態橫幅 ──
+let firstLoadDone = false;
+function hideConnBanner() { document.getElementById("connBanner").style.display = "none"; }
+function showConnError(msg) {
+  const b = document.getElementById("connBanner");
+  b.textContent = msg || "⚠️ 無法連線雲端資料庫，目前顯示的資料可能不完整　Cloud connection failed — data may be incomplete";
+  b.classList.add("error");
+  b.style.display = "block";
+}
+setTimeout(() => {
+  if (!firstLoadDone) showConnError("⚠️ 雲端連線逾時，仍在嘗試連線…　Connection timeout, retrying…");
+}, 10000);
+
+// ── 真實最後更新時間（取所有車 updatedAt 最大值） ──
+let latestUpdatedAt = null;
+function trackLatestUpdated(iso) {
+  if (typeof iso === "string" && (!latestUpdatedAt || iso > latestUpdatedAt)) latestUpdatedAt = iso;
+}
+function updateFooterUpdated() {
+  const el = document.getElementById("footerUpdated");
+  if (!latestUpdatedAt) { el.textContent = "-"; return; }
+  const d = new Date(latestUpdatedAt);
+  if (isNaN(d.getTime())) { el.textContent = "-"; return; }
+  el.textContent = `${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())} ${pad(d.getHours())}:${pad(d.getMinutes())}`;
+}
+
+// ── 有未儲存變更時，離開頁面前警告 ──
+window.addEventListener("beforeunload", e => {
+  if (countPending() > 0) { e.preventDefault(); e.returnValue = ""; }
+});
+
+// ── 雲端同步時：正在編輯的車格延後重繪，避免輸入中失焦 ──
+const pendingRender = new Set();
+document.getElementById("tableBody").addEventListener("focusout", () => {
+  setTimeout(() => {
+    pendingRender.forEach(car => {
+      const cell = document.getElementById(`cell_${car}`);
+      if (cell && !cell.contains(document.activeElement)) {
+        pendingRender.delete(car);
+        renderCarCell(car);
+        updateRowBg(car);
+      }
+    });
+    updateStats();
+  }, 0);
+});
+
 renderAll();
 </script>
 
@@ -603,10 +803,14 @@ firebase.initializeApp({
 const db = firebase.firestore();
 
 db.collection("faultData").onSnapshot(snap => {
-  snap.forEach(doc => {
-    const car = doc.id;
+  const changedCars = [];
+  // 只處理本次快照有變動的文件，而非全部重讀
+  snap.docChanges().forEach(change => {
+    const car = change.doc.id;
     if (!faultList[car]) return;
-    const data = doc.data();
+    changedCars.push(car);
+    const data = change.type === "removed" ? {} : change.doc.data();
+    if (data.updatedAt) trackLatestUpdated(data.updatedAt);
 
     // 從雲端擷取真實故障項目
     const cloudItems = [];
@@ -614,12 +818,13 @@ db.collection("faultData").onSnapshot(snap => {
       if (id === "updatedAt" || typeof val !== "object" || val === null) return;
       cloudItems.push({ id, status: val.status || "待確認", desc: val.desc || "", person: val.person || "", witness: val.witness || "" });
     });
+    // 依狀態排序：故障 → 維修中 → 待確認 → 已修復
+    cloudItems.sort((a, b) => (STATUS_SORT[a.status] ?? 9) - (STATUS_SORT[b.status] ?? 9));
 
     if (cloudItems.length > 0) {
       savedCloud[car] = cloudItems.map(f => ({ ...f }));
       // 移除虛擬預設，合併雲端資料與本機未儲存的修改
       const localDirty = faultList[car].filter(f => !f._default && (f._new || f._dirty || f._del));
-      const localDirtyIds = new Set(localDirty.map(f => f.id));
       faultList[car] = [
         ...cloudItems.map(f => {
           // 若本機有修改此項，保留本機版本
@@ -628,11 +833,33 @@ db.collection("faultData").onSnapshot(snap => {
         }),
         ...localDirty.filter(f => f._new && !cloudItems.find(c => c.id === f.id))
       ];
+    } else {
+      // 雲端該車已無資料：清除快照，保留本機未儲存的新增/修改
+      savedCloud[car] = null;
+      const localKeep = faultList[car].filter(f => !f._default && !f._del && (f._new || f._dirty));
+      faultList[car] = localKeep.length > 0
+        ? localKeep
+        : [{ id: makeId(), status: "待確認", desc: "", person: "", witness: "", _default: true }];
     }
   });
-  cars.forEach(car => { renderCarCell(car); updateRowBg(car); });
+
+  // 只重繪有變動的車；正在編輯的車格延後（見 pendingRender）
+  changedCars.forEach(car => {
+    const cell = document.getElementById(`cell_${car}`);
+    if (cell && cell.contains(document.activeElement)) {
+      pendingRender.add(car);
+    } else {
+      renderCarCell(car);
+      updateRowBg(car);
+    }
+  });
   updateStats();
-}, err => console.warn("faultData error", err));
+  updateFooterUpdated();
+  if (!firstLoadDone) { firstLoadDone = true; hideConnBanner(); }
+}, err => {
+  console.warn("faultData error", err);
+  showConnError();
+});
 </script>
 </body>
 </html>
