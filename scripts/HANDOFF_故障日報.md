@@ -6,6 +6,19 @@
 
 ---
 
+## ⚠️ 0. 資料保護規則（給接手的 AI：務必遵守）
+
+**Firestore `faultData` 的故障紀錄是使用者核心資產，預設唯讀。**
+
+1. **禁止寫入 Firestore**：不得對 `faultData` 執行任何寫入（POST / PATCH / DELETE / commit / updateMask）。
+   報告腳本只做 GET 讀取，請維持這個設計，不要加入寫入邏輯。
+2. **要改資料庫，先明確確認**：只有在使用者「明講」要修改某筆資料時才動，動之前先列出要改什麼、請使用者確認。
+3. **改網站/腳本走分支 + 先確認**：修改 `index.html` 或 `scripts/` 前，先說明改動範圍，
+   使用者同意後才 commit / push。避免直接大改 `main`。
+4. **不要把金鑰再寫死擴散**：API key 屬 Firebase web key（詳見第 3 節備註），勿再複製到新檔案。
+
+---
+
 ## 1. 專案目標
 
 從 Firebase Firestore 抓取 CN301–CN370 車廂的故障資料，產製 **DT&E 故障日報 (Daily Fault Report)** Word 文件，含**完整中英對照翻譯**，格式對齊既有 PDF 樣式。
