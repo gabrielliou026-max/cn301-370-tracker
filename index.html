@@ -211,7 +211,15 @@
     box-shadow: 0 8px 32px rgba(0,0,0,0.22);
   }
   .modal h3 { font-size: 1.1rem; color: #1a2332; margin-bottom: 10px; }
-  .modal .modal-desc { font-size: 0.88rem; color: #475569; margin-bottom: 20px; line-height: 1.65; }
+  .modal .modal-desc { font-size: 0.88rem; color: #475569; margin-bottom: 16px; line-height: 1.65; }
+  .modal-label { display: block; font-size: 0.8rem; font-weight: 600; color: #1a2332; margin-bottom: 6px; }
+  .modal-input {
+    width: 100%; border: 1px solid #e2e8f0; border-radius: 8px;
+    padding: 9px 12px; font-size: 16px; font-family: inherit;
+    outline: none; margin-bottom: 20px; background: #f8fafc;
+  }
+  .modal-input:focus { border-color: #2d4a8a; background: white; box-shadow: 0 0 0 3px rgba(45,74,138,0.12); }
+  .modal-input.input-error { border-color: #dc2626; background: #fef2f2; }
   .modal-actions { display: flex; gap: 10px; justify-content: flex-end; }
   .btn-cancel {
     border: 1px solid #e2e8f0; background: white; color: #64748b;
@@ -333,6 +341,11 @@
       確定要儲存 <strong id="modalCount">0</strong> 項變更，並即時同步給所有使用者嗎？<br>
       <span class="warn-text">⚠️ 儲存後將覆蓋雲端資料，請確認後再送出。</span>
     </p>
+    <label class="modal-label" for="editorName">✍️ 更新人員 Updated by（必填 Required）</label>
+    <input id="editorName" class="modal-input" list="editorNames"
+           placeholder="輸入你的名字 Your name"
+           oninput="this.classList.remove('input-error')">
+    <datalist id="editorNames"></datalist>
     <div class="modal-actions">
       <button class="btn-cancel" onclick="closeSaveModal()">✕ 取消 Cancel</button>
       <button class="btn-confirm" onclick="commitChanges()">✓ 確認儲存 Confirm</button>
@@ -672,11 +685,23 @@ function discardChanges() {
 
 function openSaveConfirm() {
   document.getElementById("modalCount").textContent = countPending();
+  // 帶入上次輸入的名字（記在此裝置瀏覽器）
+  const inp = document.getElementById("editorName");
+  if (!inp.value) inp.value = localStorage.getItem("editorName") || "";
   document.getElementById("saveModal").style.display = "flex";
 }
 function closeSaveModal() { document.getElementById("saveModal").style.display = "none"; }
 
 function commitChanges() {
+  // 更新人員必填，才知道是誰在什麼時間改的
+  const nameInp = document.getElementById("editorName");
+  const editor = nameInp.value.trim();
+  if (!editor) {
+    nameInp.classList.add("input-error");
+    nameInp.focus();
+    return;
+  }
+  localStorage.setItem("editorName", editor);
   closeSaveModal();
   document.getElementById("saveBarText").innerHTML = "⏳ 儲存中… Saving…";
   const batch = db.batch();
@@ -689,7 +714,7 @@ function commitChanges() {
     if (!hasChange) return;
     carsChanged.add(car);
     const ref = db.collection("faultData").doc(car);
-    const data = { updatedAt: now };
+    const data = { updatedAt: now, updatedBy: editor };
     faultList[car].filter(f => !f._del && !f._default).forEach(f => {
       data[f.id] = { status: f.status, desc: f.desc, person: f.person || "", witness: f.witness || "" };
     });
@@ -751,18 +776,27 @@ setTimeout(() => {
   if (!firstLoadDone) showConnError("⚠️ 雲端連線逾時，仍在嘗試連線…　Connection timeout, retrying…");
 }, 10000);
 
-// ── 真實最後更新時間（取所有車 updatedAt 最大值） ──
+// ── 真實最後更新時間與人員（取所有車 updatedAt 最大值） ──
 let latestUpdatedAt = null;
-function trackLatestUpdated(iso) {
-  if (typeof iso === "string" && (!latestUpdatedAt || iso > latestUpdatedAt)) latestUpdatedAt = iso;
+let latestUpdatedBy = "";
+function trackLatestUpdated(iso, by) {
+  if (typeof iso === "string" && (!latestUpdatedAt || iso > latestUpdatedAt)) {
+    latestUpdatedAt = iso;
+    latestUpdatedBy = typeof by === "string" ? by : "";
+  }
 }
 function updateFooterUpdated() {
   const el = document.getElementById("footerUpdated");
   if (!latestUpdatedAt) { el.textContent = "-"; return; }
   const d = new Date(latestUpdatedAt);
   if (isNaN(d.getTime())) { el.textContent = "-"; return; }
-  el.textContent = `${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())} ${pad(d.getHours())}:${pad(d.getMinutes())}`;
+  const t = `${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())} ${pad(d.getHours())}:${pad(d.getMinutes())}`;
+  el.textContent = latestUpdatedBy ? `${t}（${latestUpdatedBy}）` : t;
 }
+
+// 更新人員欄位的建議名單（同見證人名單，仍可自由輸入其他名字）
+document.getElementById("editorNames").innerHTML =
+  WITNESS_NAMES.map(n => `<option value="${escH(n)}">`).join("");
 
 // ── 有未儲存變更時，離開頁面前警告 ──
 window.addEventListener("beforeunload", e => {
@@ -810,12 +844,12 @@ db.collection("faultData").onSnapshot(snap => {
     if (!faultList[car]) return;
     changedCars.push(car);
     const data = change.type === "removed" ? {} : change.doc.data();
-    if (data.updatedAt) trackLatestUpdated(data.updatedAt);
+    if (data.updatedAt) trackLatestUpdated(data.updatedAt, data.updatedBy);
 
-    // 從雲端擷取真實故障項目
+    // 從雲端擷取真實故障項目（updatedAt / updatedBy 為文件層級欄位，需略過）
     const cloudItems = [];
     Object.entries(data).forEach(([id, val]) => {
-      if (id === "updatedAt" || typeof val !== "object" || val === null) return;
+      if (id === "updatedAt" || id === "updatedBy" || typeof val !== "object" || val === null) return;
       cloudItems.push({ id, status: val.status || "待確認", desc: val.desc || "", person: val.person || "", witness: val.witness || "" });
     });
     // 依狀態排序：故障 → 維修中 → 待確認 → 已修復
