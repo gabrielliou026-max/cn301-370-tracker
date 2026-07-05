@@ -213,10 +213,13 @@
   .modal h3 { font-size: 1.1rem; color: #1a2332; margin-bottom: 10px; }
   .modal .modal-desc { font-size: 0.88rem; color: #475569; margin-bottom: 16px; line-height: 1.65; }
   .modal-label { display: block; font-size: 0.8rem; font-weight: 600; color: #1a2332; margin-bottom: 6px; }
+  .editor-wrap { display: flex; flex-direction: column; gap: 8px; margin-bottom: 20px; }
+  .editor-wrap .modal-input { margin-bottom: 0; }
+  select.modal-input { cursor: pointer; }
   .modal-input {
     width: 100%; border: 1px solid #e2e8f0; border-radius: 8px;
     padding: 9px 12px; font-size: 16px; font-family: inherit;
-    outline: none; margin-bottom: 20px; background: #f8fafc;
+    outline: none; margin-bottom: 20px; background: #f8fafc; color: #1a2332;
   }
   .modal-input:focus { border-color: #2d4a8a; background: white; box-shadow: 0 0 0 3px rgba(45,74,138,0.12); }
   .modal-input.input-error { border-color: #dc2626; background: #fef2f2; }
@@ -341,11 +344,13 @@
       確定要儲存 <strong id="modalCount">0</strong> 項變更，並即時同步給所有使用者嗎？<br>
       <span class="warn-text">⚠️ 儲存後將覆蓋雲端資料，請確認後再送出。</span>
     </p>
-    <label class="modal-label" for="editorName">✍️ 更新人員 Updated by（必填 Required）</label>
-    <input id="editorName" class="modal-input" list="editorNames"
-           placeholder="輸入你的名字 Your name"
-           oninput="this.classList.remove('input-error')">
-    <datalist id="editorNames"></datalist>
+    <label class="modal-label" for="editorSelect">✍️ 更新人員 Updated by（必填 Required）</label>
+    <div class="editor-wrap">
+      <select id="editorSelect" class="modal-input" onchange="onEditorSelect(this)"></select>
+      <input id="editorOther" class="modal-input" type="text" style="display:none"
+             placeholder="輸入名字 Enter your name"
+             oninput="this.classList.remove('input-error')">
+    </div>
     <div class="modal-actions">
       <button class="btn-cancel" onclick="closeSaveModal()">✕ 取消 Cancel</button>
       <button class="btn-confirm" onclick="commitChanges()">✓ 確認儲存 Confirm</button>
@@ -683,22 +688,40 @@ function discardChanges() {
   updateStats();
 }
 
+function onEditorSelect(sel) {
+  sel.classList.remove("input-error");
+  const other = document.getElementById("editorOther");
+  other.style.display = sel.value === "__other__" ? "block" : "none";
+  if (sel.value === "__other__") setTimeout(() => other.focus(), 0);
+}
+
 function openSaveConfirm() {
   document.getElementById("modalCount").textContent = countPending();
-  // 帶入上次輸入的名字（記在此裝置瀏覽器）
-  const inp = document.getElementById("editorName");
-  if (!inp.value) inp.value = localStorage.getItem("editorName") || "";
+  // 帶入上次選擇/輸入的名字（記在此裝置瀏覽器）
+  const stored = localStorage.getItem("editorName") || "";
+  const sel = document.getElementById("editorSelect");
+  const other = document.getElementById("editorOther");
+  if (stored && WITNESS_NAMES.includes(stored)) {
+    sel.value = stored;
+    other.style.display = "none";
+  } else if (stored) {
+    sel.value = "__other__";
+    other.value = stored;
+    other.style.display = "block";
+  }
   document.getElementById("saveModal").style.display = "flex";
 }
 function closeSaveModal() { document.getElementById("saveModal").style.display = "none"; }
 
 function commitChanges() {
   // 更新人員必填，才知道是誰在什麼時間改的
-  const nameInp = document.getElementById("editorName");
-  const editor = nameInp.value.trim();
+  const sel = document.getElementById("editorSelect");
+  const other = document.getElementById("editorOther");
+  const editor = sel.value === "__other__" ? other.value.trim() : sel.value;
   if (!editor) {
-    nameInp.classList.add("input-error");
-    nameInp.focus();
+    const target = sel.value === "__other__" ? other : sel;
+    target.classList.add("input-error");
+    target.focus();
     return;
   }
   localStorage.setItem("editorName", editor);
@@ -794,9 +817,11 @@ function updateFooterUpdated() {
   el.textContent = latestUpdatedBy ? `${t}（${latestUpdatedBy}）` : t;
 }
 
-// 更新人員欄位的建議名單（同見證人名單，仍可自由輸入其他名字）
-document.getElementById("editorNames").innerHTML =
-  WITNESS_NAMES.map(n => `<option value="${escH(n)}">`).join("");
+// 更新人員下拉選單：名單＋明確的「其他」自訂選項
+document.getElementById("editorSelect").innerHTML =
+  `<option value="">— 請選擇人員 Select name —</option>` +
+  WITNESS_NAMES.map(n => `<option value="${escH(n)}">${escH(n)}</option>`).join("") +
+  `<option value="__other__">✏️ 其他 Other…（自行輸入 Type a name）</option>`;
 
 // ── 有未儲存變更時，離開頁面前警告 ──
 window.addEventListener("beforeunload", e => {
