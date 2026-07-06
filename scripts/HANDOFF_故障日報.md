@@ -2,22 +2,13 @@
 
 > 這份文件用於把「CN301-370 故障追蹤網站 + DT&E 故障日報」維護工作轉移到新的對話框。
 > 貼上或附上此檔給新對話，即可無縫接手。
-> 最後更新：2026-07-05
+> 最後更新：2026-07-06
 
 ---
 
-## 🚨 緊急待辦：Firestore 規則 2026-07-08 到期
+## ✅ Firestore 規則已於 2026-07-06 更新（7/8 到期問題已解除）
 
-目前 Firestore 是「測試模式」預設規則：
-
-```
-allow read, write: if request.time < timestamp.date(2026, 7, 8);
-```
-
-**UTC 7/8 零點（台灣時間 7/8 早上 8 點）過後，所有讀寫都會被拒絕**：
-網站顯示紅色連線錯誤、儲存失敗、日報腳本抓不到資料。資料本身不會消失，改規則即恢復。
-
-**處理方式**（需使用者本人到 Firebase Console → Firestore Database → 規則 Rules → 貼上 → 發布）：
+現行規則（無到期日、只開放 faultData）：
 
 ```
 rules_version = '2';
@@ -31,9 +22,12 @@ service cloud.firestore {
 }
 ```
 
-此版無到期日、範圍縮至 faultData。注意：仍是公開可寫（與現況相同），
-之後若要真正防外人寫入需加匿名登入＋規則驗證（網站端需改程式）。
-改規則前建議先按網站右上「📥 備份」下載 JSON 快照。
+- 更新前已按網站「📥 備份」下載 JSON 快照
+- faultData 仍為公開可讀寫（與改版前相同）
+- 資料庫另有 `carStatus`、`missionOps` 兩個 collection，已被此規則封鎖
+  （2026-07-06 使用者確認只開 faultData；若日後有工具壞掉，到 Console 規則加開即可）
+- 進一步防外人寫入：建議 Google 登入＋email 白名單（write 限白名單、
+  read 維持 `if true` 公開，日報腳本免改）；網站端需加登入流程
 
 ---
 
@@ -215,12 +209,12 @@ python3 gen_word_report.py
 
 ## 11. 常見後續任務
 
-- **🚨 7/8 前改 Firestore 規則**：見文件最上方緊急待辦
 - **產今日報告**：`cd scripts && python3 gen_word_report.py`
 - **比對昨晚 vs 現在**：跑 `compare_report.py`，或重新解析 PDF 基準
 - **補翻譯**：見第 7 節流程
 - **調整輪次/排除車**：改 `gen_word_report.py` 的 `ROTATIONS`，與 `index.html` 的 `EXCLUDED` 保持一致
-- **進一步防護（可選）**：匿名登入＋規則驗證、每筆故障加時間戳（使用者已知悉、暫緩）
+- **進一步防護（可選）**：Google 登入＋email 白名單規則（建議）或匿名登入（防護有限）；
+  每筆故障加時間戳（使用者已知悉、暫緩）
 
 ---
 
