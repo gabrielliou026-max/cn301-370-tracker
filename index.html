@@ -137,6 +137,7 @@
   .f-fault   { background: #fee2e2; color: #991b1b; border-color: #fca5a5; }
   .f-wip     { background: #fef3c7; color: #92400e; border-color: #fcd34d; }
   .f-pending { background: #dbeafe; color: #1e40af; border-color: #93c5fd; }
+  .f-unchecked { background: #f1f5f9; color: #64748b; border-color: #e2e8f0; }
 
   .fi-desc {
     flex: 1; border: none; background: transparent;
@@ -476,10 +477,14 @@ function renderCarCell(car) {
   if (!cell) return;
   const active = faultList[car].filter(f => !f._del);
   const items = active.map(f => {
-    const cls = STATUS_CLS[f.status] || "f-pending";
-    const opts = STATUS_OPTS.map(o =>
-      `<option value="${o.value}"${f.status===o.value?" selected":""}>${escH(o.label)}</option>`
-    ).join("");
+    // 虛擬預設項目（尚未檢查的車）：選單顯示灰色「尚未檢查」，選了實際狀態才轉真實紀錄
+    const isDefault = !!f._default;
+    const cls = isDefault ? "f-unchecked" : (STATUS_CLS[f.status] || "f-pending");
+    const opts =
+      (isDefault ? `<option value="__unchecked__" selected>⬜ 尚未檢查 Unchecked</option>` : "") +
+      STATUS_OPTS.map(o =>
+        `<option value="${o.value}"${!isDefault && f.status===o.value?" selected":""}>${escH(o.label)}</option>`
+      ).join("");
     const itemCls = f._new ? " is-new" : "";
     // 均完成 不顯示描述與人員欄；其他狀態完整顯示
     const showDetail = f.status !== "均完成";
@@ -671,6 +676,8 @@ function updateFaultStatus(car, id, sel) {
   const val = sel.value;
   const f = faultList[car].find(f => f.id === id);
   if (!f) return;
+  // 「尚未檢查」是虛擬狀態（僅預設項目有此選項），選回它時維持預設不動
+  if (val === "__unchecked__") return;
   f.status = val;
   // 虛擬預設被修改 → 變為真實新增
   if (f._default) { delete f._default; f._new = true; }
@@ -683,18 +690,28 @@ function updateFaultStatus(car, id, sel) {
   updateStats();
 }
 
-// 虛擬預設項目被編輯（脫離「尚未檢查」）時，移除該車的均完成快速鍵
-// （打字中不重繪整格以免失焦，故單獨移除按鈕）
-function hideAllClearBtn(car) {
+// 虛擬預設項目被編輯（脫離「尚未檢查」）時的即時 UI 修正：
+// 移除該車的均完成快速鍵、把該項目選單從「尚未檢查」切為待確認
+// （打字中不重繪整格以免失焦，故單獨修正這兩個元素）
+function defaultTouched(car, id) {
   const btn = document.querySelector(`#cell_${car} .allclear-btn`);
   if (btn) btn.remove();
+  const sel = document.querySelector(`#fi_${car}_${id} .fi-select`);
+  if (sel) {
+    const opt = sel.querySelector('option[value="__unchecked__"]');
+    if (opt) opt.remove();
+    sel.value = "待確認";
+    sel.className = `fi-select ${STATUS_CLS["待確認"]}`;
+  }
+  updateRowBg(car);
+  updateStats();
 }
 
 function updateFaultDesc(car, id, val) {
   const f = faultList[car].find(f => f.id === id);
   if (!f) return;
   f.desc = val;
-  if (f._default) { delete f._default; f._new = true; hideAllClearBtn(car); }
+  if (f._default) { delete f._default; f._new = true; defaultTouched(car, id); }
   else if (!f._new) { f._dirty = true; }
   updateSaveBar();
 }
@@ -703,7 +720,7 @@ function updateFaultPerson(car, id, val) {
   const f = faultList[car].find(f => f.id === id);
   if (!f) return;
   f.person = val;
-  if (f._default) { delete f._default; f._new = true; hideAllClearBtn(car); }
+  if (f._default) { delete f._default; f._new = true; defaultTouched(car, id); }
   else if (!f._new) { f._dirty = true; }
   updateSaveBar();
 }
@@ -736,7 +753,7 @@ function updateFaultWitness(car, id, val) {
   const f = faultList[car].find(f => f.id === id);
   if (!f) return;
   f.witness = val;
-  if (f._default) { delete f._default; f._new = true; hideAllClearBtn(car); }
+  if (f._default) { delete f._default; f._new = true; defaultTouched(car, id); }
   else if (!f._new) { f._dirty = true; }
   updateSaveBar();
 }
