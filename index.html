@@ -41,10 +41,11 @@
   .stat-card .num { font-size: 1.75rem; font-weight: 800; line-height: 1; }
   .stat-card .lbl { font-size: 0.7rem; color: #64748b; margin-top: 4px; line-height: 1.4; }
   .s-total .num { color: #1a2f5e; }
+  .s-unchecked .num { color: #94a3b8; }
   .s-done  .num { color: #16a34a; }
   .s-fault .num { color: #dc2626; }
   .s-wip   .num { color: #d97706; }
-  .s-pend  .num { color: #94a3b8; }
+  .s-pend  .num { color: #2563eb; }
 
   .export-btn {
     background: rgba(255,255,255,0.15); color: white;
@@ -135,7 +136,7 @@
   .f-fixed   { background: #cffafe; color: #0e7490; border-color: #67e8f9; }
   .f-fault   { background: #fee2e2; color: #991b1b; border-color: #fca5a5; }
   .f-wip     { background: #fef3c7; color: #92400e; border-color: #fcd34d; }
-  .f-pending { background: #f1f5f9; color: #64748b; border-color: #e2e8f0; }
+  .f-pending { background: #dbeafe; color: #1e40af; border-color: #93c5fd; }
 
   .fi-desc {
     flex: 1; border: none; background: transparent;
@@ -181,13 +182,20 @@
   }
   .fi-del-btn:hover { color: #dc2626; background: #fee2e2; }
 
+  .quick-btns { display: flex; gap: 8px; align-items: center; margin-top: 2px; }
   .add-fault-btn {
-    align-self: flex-start; border: 1px dashed #94a3b8;
+    border: 1px dashed #94a3b8;
     background: white; color: #64748b; border-radius: 8px;
     padding: 4px 10px; font-size: 0.75rem; font-family: inherit;
-    cursor: pointer; transition: all 0.15s; margin-top: 2px;
+    cursor: pointer; transition: all 0.15s;
   }
   .add-fault-btn:hover { border-color: #2d4a8a; color: #2d4a8a; background: #eff6ff; }
+  .allclear-btn {
+    border: 1px solid #86efac; background: #f0fdf4; color: #166534;
+    border-radius: 8px; padding: 4px 12px; font-size: 0.75rem;
+    font-weight: 700; font-family: inherit; cursor: pointer; transition: all 0.15s;
+  }
+  .allclear-btn:hover { background: #dcfce7; border-color: #16a34a; }
 
   .no-faults { font-size: 0.75rem; color: #cbd5e1; font-style: italic; padding: 2px 0; }
 
@@ -291,7 +299,9 @@
     .fi-witness-wrap { order: 5; width: 100%; }
     .fi-witness { flex: 1; width: auto; padding: 8px 10px; font-size: 16px; }
     .fi-witness-other { flex: 1; width: auto; padding: 8px 10px; font-size: 16px; }
+    .quick-btns { flex-wrap: wrap; }
     .add-fault-btn { padding: 8px 14px; font-size: 0.85rem; }
+    .allclear-btn { padding: 8px 16px; font-size: 0.85rem; }
     .save-bar { padding: 10px 12px; gap: 10px; }
   }
 </style>
@@ -316,6 +326,7 @@
 
 <div class="summary-bar">
   <div class="stat-card s-total" onclick="setFilter(null)" title="顯示全部"><div class="num" id="statTotal">57</div><div class="lbl">總台數<br>Total</div></div>
+  <div class="stat-card s-unchecked" onclick="setFilter('unchecked')" title="點擊篩選"><div class="num" id="statUnchecked">0</div><div class="lbl">尚未檢查<br>Unchecked</div></div>
   <div class="stat-card s-done" onclick="setFilter('done')" title="點擊篩選"><div class="num" id="statDone">0</div><div class="lbl">無故障<br>All Clear</div></div>
   <div class="stat-card s-fault" onclick="setFilter('fault')" title="點擊篩選"><div class="num" id="statFault">0</div><div class="lbl">故障<br>Fault</div></div>
   <div class="stat-card s-wip" onclick="setFilter('wip')" title="點擊篩選"><div class="num" id="statWip">0</div><div class="lbl">維修中<br>Under Repair</div></div>
@@ -323,7 +334,7 @@
 </div>
 
 <div class="progress-wrap">
-  <div class="progress-label" id="progressLabel">無故障台數 All Clear：0 / 57 units</div>
+  <div class="progress-label" id="progressLabel">已檢查 Checked：0 / 57 units</div>
   <div class="progress-track"><div class="progress-fill" id="progressFill" style="width:0%"></div></div>
 </div>
 
@@ -508,18 +519,28 @@ function renderCarCell(car) {
     </div>`;
   }).join("");
 
+  // 尚未檢查的車顯示「均完成」快速鍵，一鍵完成清點
+  const isUnchecked = active.length === 1 && active[0]._default;
+  const allClearBtn = isUnchecked
+    ? `<button class="allclear-btn" onclick="markAllClear('${car}')" title="此車無故障，一鍵標記">✓ 均完成 All Clear</button>`
+    : "";
   cell.innerHTML = `<div class="fault-list">
     ${items}
-    <button class="add-fault-btn" onclick="addFault('${car}')">＋ 新增故障 Add Fault</button>
+    <div class="quick-btns">
+      ${allClearBtn}
+      <button class="add-fault-btn" onclick="addFault('${car}')">＋ 新增故障 Add Fault</button>
+    </div>
   </div>`;
   // 已有內容的 textarea 自動展開高度
   cell.querySelectorAll(".fi-desc").forEach(ta => autoResize(ta));
 }
 
-// 車輛狀態分類：done(無故障) / fault(故障) / wip(維修中) / pend(待確認)
+// 車輛狀態分類：unchecked(尚未檢查) / done(無故障) / fault(故障) / wip(維修中) / pend(待確認)
+// 「尚未檢查」＝沒有任何真實紀錄（僅剩虛擬預設項目）
 function carCategory(car) {
-  const active = faultList[car].filter(f => !f._del);
-  if (active.length === 0 || active.every(f => f.status === "均完成" || f.status === "已修復完成")) return "done";
+  const active = faultList[car].filter(f => !f._del && !f._default);
+  if (active.length === 0) return "unchecked";
+  if (active.every(f => f.status === "均完成" || f.status === "已修復完成")) return "done";
   if (active.some(f => f.status === "故障"))  return "fault";
   if (active.some(f => f.status === "維修中")) return "wip";
   return "pend";
@@ -528,39 +549,44 @@ function carCategory(car) {
 function updateRowBg(car) {
   const row = document.getElementById(`row_${car}`);
   if (!row) return;
-  const active = faultList[car].filter(f => !f._del);
   const cat = carCategory(car);
   let bg = "";
-  if (cat === "done")       bg = active.length > 0 ? "#f0fdf4" : "";
+  if (cat === "done")       bg = "#f0fdf4";
   else if (cat === "fault") bg = "#fff1f2";
   else if (cat === "wip")   bg = "#fffbeb";
+  else if (cat === "pend")  bg = "#eff6ff";
+  // unchecked → 白底
   row.style.background = bg;
 }
 
 function updateStats() {
-  let done = 0, fault = 0, wip = 0, pend = 0;
+  let unchecked = 0, done = 0, fault = 0, wip = 0, pend = 0;
   cars.forEach(car => {
     const cat = carCategory(car);
-    if (cat === "done")       done++;
+    if (cat === "unchecked")  unchecked++;
+    else if (cat === "done")  done++;
     else if (cat === "fault") fault++;
     else if (cat === "wip")   wip++;
     else                      pend++;
   });
+  document.getElementById("statUnchecked").textContent = unchecked;
   document.getElementById("statDone").textContent  = done;
   document.getElementById("statFault").textContent = fault;
   document.getElementById("statWip").textContent   = wip;
   document.getElementById("statPend").textContent  = pend;
-  const rate = Math.round((done / TOTAL) * 100);
+  // 進度條＝已檢查進度（有任何紀錄即算已檢查）
+  const checked = TOTAL - unchecked;
+  const rate = Math.round((checked / TOTAL) * 100);
   document.getElementById("progressFill").style.width = rate + "%";
   document.getElementById("progressLabel").textContent =
-    `無故障台數 All Clear：${done} / ${TOTAL} units`;
+    `已檢查 Checked：${checked} / ${TOTAL} units`;
   applyFilter();
 }
 
 // ── 搜尋 / 篩選 ──
 let filterStatus = null;   // null | done | fault | wip | pend
 let searchQuery = "";
-const FILTER_NAMES = { done: "無故障 All Clear", fault: "故障 Fault", wip: "維修中 Under Repair", pend: "待確認 Pending" };
+const FILTER_NAMES = { unchecked: "尚未檢查 Unchecked", done: "無故障 All Clear", fault: "故障 Fault", wip: "維修中 Under Repair", pend: "待確認 Pending" };
 
 function setFilter(k) {
   filterStatus = (k && filterStatus !== k) ? k : null;   // 再點一次取消
@@ -591,6 +617,19 @@ function applyFilter() {
 }
 
 // ── 操作 ──
+// 一鍵「均完成」：把尚未檢查車輛的虛擬預設項目轉為真實的均完成紀錄（仍需按儲存送出）
+function markAllClear(car) {
+  const item = faultList[car].find(f => f._default && !f._del);
+  if (!item) return;
+  delete item._default;
+  item._new = true;
+  item.status = "均完成";
+  renderCarCell(car);
+  updateRowBg(car);
+  updateSaveBar();
+  updateStats();
+}
+
 function addFault(car) {
   const id = makeId();
   faultList[car].push({ id, status: "待確認", desc: "", person: "", witness: "", _new: true });
@@ -644,11 +683,18 @@ function updateFaultStatus(car, id, sel) {
   updateStats();
 }
 
+// 虛擬預設項目被編輯（脫離「尚未檢查」）時，移除該車的均完成快速鍵
+// （打字中不重繪整格以免失焦，故單獨移除按鈕）
+function hideAllClearBtn(car) {
+  const btn = document.querySelector(`#cell_${car} .allclear-btn`);
+  if (btn) btn.remove();
+}
+
 function updateFaultDesc(car, id, val) {
   const f = faultList[car].find(f => f.id === id);
   if (!f) return;
   f.desc = val;
-  if (f._default) { delete f._default; f._new = true; }
+  if (f._default) { delete f._default; f._new = true; hideAllClearBtn(car); }
   else if (!f._new) { f._dirty = true; }
   updateSaveBar();
 }
@@ -657,7 +703,7 @@ function updateFaultPerson(car, id, val) {
   const f = faultList[car].find(f => f.id === id);
   if (!f) return;
   f.person = val;
-  if (f._default) { delete f._default; f._new = true; }
+  if (f._default) { delete f._default; f._new = true; hideAllClearBtn(car); }
   else if (!f._new) { f._dirty = true; }
   updateSaveBar();
 }
@@ -690,7 +736,7 @@ function updateFaultWitness(car, id, val) {
   const f = faultList[car].find(f => f.id === id);
   if (!f) return;
   f.witness = val;
-  if (f._default) { delete f._default; f._new = true; }
+  if (f._default) { delete f._default; f._new = true; hideAllClearBtn(car); }
   else if (!f._new) { f._dirty = true; }
   updateSaveBar();
 }
