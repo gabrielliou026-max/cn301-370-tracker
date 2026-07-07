@@ -54,6 +54,19 @@
   }
   .export-btn:hover { background: rgba(255,255,255,0.28); }
 
+  .unit-tabs {
+    display: flex; gap: 8px; padding: 10px 28px;
+    background: white; border-bottom: 1px solid #dde3ed;
+  }
+  .unit-tabs a {
+    text-decoration: none; font-size: 0.85rem; font-weight: 700;
+    color: #64748b; padding: 6px 20px; border-radius: 20px;
+    border: 1px solid #e2e8f0; background: #f8fafc;
+    transition: all 0.15s;
+  }
+  .unit-tabs a:hover { border-color: #2d4a8a; color: #2d4a8a; }
+  .unit-tabs a.active { background: #1a2f5e; color: white; border-color: #1a2f5e; }
+
   .progress-wrap { padding: 0 28px 14px; background: white; border-bottom: 1px solid #dde3ed; }
   .progress-track { height: 10px; background: #e2e8f0; border-radius: 6px; overflow: hidden; margin-top: 2px; }
   .progress-fill { height: 100%; background: linear-gradient(90deg, #16a34a, #22c55e); border-radius: 6px; transition: width 0.5s ease; }
@@ -248,6 +261,8 @@
     body { padding-bottom: 130px; }
     header { padding: 12px 14px; gap: 10px; flex-wrap: wrap; }
     header > div:first-child { font-size: 1.5rem; }
+    .unit-tabs { padding: 8px 12px; }
+    .unit-tabs a { flex: 1; text-align: center; padding: 8px 0; }
     .summary-bar { padding: 10px 12px; gap: 8px; }
     .stat-card { min-width: calc(33.3% - 8px); padding: 8px 6px; }
     .stat-card .num { font-size: 1.35rem; }
@@ -286,12 +301,18 @@
 <header>
   <div style="font-size:2rem;">🚃</div>
   <div class="title-block">
-    <h1>CN301-370 故障追蹤系統 <span class="en">Fault Tracking System</span></h1>
-    <p>作業單位 Unit：Communications Maintenance　｜　車廂數量 Total：57 units</p>
+    <h1><span id="unitTitle">CN301-370 故障追蹤系統</span> <span class="en">Fault Tracking System</span></h1>
+    <p id="unitSubtitle">作業單位 Unit：73G　｜　車廂數量 Total：57 units</p>
   </div>
   <div class="badge" id="headerDate">載入中…</div>
-  <button class="export-btn" onclick="exportBackup()" title="下載目前雲端資料的 JSON 備份">📥 備份 Backup</button>
+  <button class="export-btn" onclick="exportBackup()" title="下載目前單位雲端資料的 JSON 備份">📥 備份 Backup</button>
 </header>
+
+<nav class="unit-tabs">
+  <a href="?unit=73G" data-unit="73G">73G</a>
+  <a href="?unit=74G" data-unit="74G">74G</a>
+  <a href="?unit=75G" data-unit="75G">75G</a>
+</nav>
 
 <div class="summary-bar">
   <div class="stat-card s-total" onclick="setFilter(null)" title="顯示全部"><div class="num" id="statTotal">57</div><div class="lbl">總台數<br>Total</div></div>
@@ -364,13 +385,33 @@
 </footer>
 
 <script>
-const EXCLUDED = new Set(["CN315","CN316","CN317","CN318","CN332","CN333","CN334","CN335","CN349","CN350","CN351","CN352","CN365","CN366","CN367","CN368"]);
-const TOTAL = 57;
-const NMS_CARS = ["NMS381","NMS382","NMS383"];
-const cars = [
-  ...NMS_CARS,
-  ...Array.from({length: 70}, (_, i) => `CN${301 + i}`).filter(c => !EXCLUDED.has(c))
-];
+// ── 單位設定 ──
+// 三單位共用同一個 faultData collection（doc id = 車號），
+// 車號範圍互不重疊（73G: 301-370/NMS38x, 74G: 501-546/NMS58x, 75G: 401-446/NMS48x），
+// 因此無需修改 Firestore 規則即可隔離。新增單位時務必確認車號不與現有單位重複。
+function carRange(a, b) { return Array.from({length: b - a + 1}, (_, i) => `CN${a + i}`); }
+const EXCLUDED = new Set(["CN315","CN316","CN317","CN318","CN332","CN333","CN334","CN335","CN349","CN350","CN351","CN352","CN365","CN366","CN367","CN368"]); // 73G 專用
+const UNITS = {
+  "73G": {
+    title: "CN301-370 故障追蹤系統",
+    cars: ["NMS381","NMS382","NMS383", ...carRange(301, 370).filter(c => !EXCLUDED.has(c))],  // 57
+  },
+  "74G": {
+    title: "CN501-546 故障追蹤系統",
+    cars: ["NMS581","NMS582", ...carRange(501, 514), ...carRange(519, 531), ...carRange(536, 546)],  // 40
+  },
+  "75G": {
+    title: "CN401-446 故障追蹤系統",
+    cars: ["NMS481","NMS482", ...carRange(401, 414), ...carRange(419, 431), ...carRange(436, 446)],  // 40
+  },
+};
+const UNIT_ID = (() => {
+  const u = new URLSearchParams(location.search).get("unit") || "73G";
+  return UNITS[u] ? u : "73G";
+})();
+const UNIT = UNITS[UNIT_ID];
+const cars = UNIT.cars;
+const TOTAL = cars.length;
 
 const STATUS_OPTS = [
   { value: "均完成",    label: "✓ 均完成 All Clear",       cls: "f-done"    },
@@ -767,9 +808,18 @@ function commitChanges() {
   });
 }
 
-// ── 匯出雲端資料備份 (JSON) ──
+// ── 單位切換 UI 初始化 ──
+document.title = `${UNIT_ID} 故障追蹤系統`;
+document.getElementById("unitTitle").textContent = UNIT.title;
+document.getElementById("unitSubtitle").textContent =
+  `作業單位 Unit：${UNIT_ID}　｜　車廂數量 Total：${TOTAL} units`;
+document.getElementById("statTotal").textContent = TOTAL;
+document.querySelectorAll(".unit-tabs a").forEach(a =>
+  a.classList.toggle("active", a.dataset.unit === UNIT_ID));
+
+// ── 匯出雲端資料備份 (JSON，僅本單位車輛) ──
 function exportBackup() {
-  const out = { _meta: { exportedAt: new Date().toISOString(), collection: "faultData" } };
+  const out = { _meta: { exportedAt: new Date().toISOString(), collection: "faultData", unit: UNIT_ID } };
   let count = 0;
   cars.forEach(car => {
     if (savedCloud[car] && savedCloud[car].length > 0) {
@@ -782,7 +832,7 @@ function exportBackup() {
   });
   if (count === 0 && !confirm("目前尚未載入任何雲端資料，仍要匯出空備份嗎？\nNo cloud data loaded yet. Export empty backup?")) return;
   const now = new Date();
-  const name = `faultData_backup_${now.getFullYear()}-${pad(now.getMonth()+1)}-${pad(now.getDate())}_${pad(now.getHours())}${pad(now.getMinutes())}.json`;
+  const name = `faultData_backup_${UNIT_ID}_${now.getFullYear()}-${pad(now.getMonth()+1)}-${pad(now.getDate())}_${pad(now.getHours())}${pad(now.getMinutes())}.json`;
   const blob = new Blob([JSON.stringify(out, null, 2)], { type: "application/json" });
   const a = document.createElement("a");
   a.href = URL.createObjectURL(blob);
