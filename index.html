@@ -317,6 +317,7 @@
   </div>
   <div class="badge" id="headerDate">載入中…</div>
   <button class="export-btn" onclick="exportBackup()" title="下載目前單位雲端資料的 JSON 備份">📥 備份 Backup</button>
+  <button class="export-btn" onclick="generateReport(this)" title="以目前雲端資料產出本單位 Word 故障日報">📄 報告 Report</button>
 </header>
 
 <nav class="unit-tabs">
@@ -902,6 +903,40 @@ function exportBackup() {
   a.download = name;
   a.click();
   URL.revokeObjectURL(a.href);
+}
+
+// ── 產出 Word 故障日報（按下時才載入 report_gen.js 與 JSZip）──
+function loadScriptOnce(src) {
+  return new Promise((res, rej) => {
+    if (document.querySelector(`script[data-src="${src}"]`)) return res();
+    const s = document.createElement("script");
+    s.src = src; s.dataset.src = src;
+    s.onload = res;
+    s.onerror = () => rej(new Error("無法載入 " + src));
+    document.head.appendChild(s);
+  });
+}
+
+async function generateReport(btn) {
+  if (!firstLoadDone &&
+      !confirm("雲端資料尚未載入完成，報告內容可能不完整。仍要繼續嗎？\nCloud data not loaded yet. Continue?")) return;
+  if (countPending() > 0 &&
+      !confirm("你有未儲存的變更，報告只會包含「已儲存」的雲端資料。要繼續嗎？\nUnsaved changes will NOT be included. Continue?")) return;
+  const orig = btn.textContent;
+  btn.disabled = true; btn.textContent = "⏳ 產出中…";
+  try {
+    await loadScriptOnce("vendor/jszip.min.js");
+    await loadScriptOnce("report_gen.js");
+    const r = await window.generateUnitReport(UNIT_ID, cars, savedCloud);
+    if (r.missing.length) {
+      alert(`報告已下載。\n注意：${r.missing.length} 筆故障描述未收錄翻譯，英文欄將顯示原文，請通知管理者補充詞庫。`);
+    }
+  } catch (e) {
+    console.warn("report failed", e);
+    alert("報告產出失敗：" + ((e && e.message) || e));
+  } finally {
+    btn.disabled = false; btn.textContent = orig;
+  }
 }
 
 // ── 連線狀態橫幅 ──
