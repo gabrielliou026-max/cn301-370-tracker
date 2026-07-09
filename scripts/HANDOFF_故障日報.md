@@ -57,10 +57,19 @@ service cloud.firestore {
 
 | 檔案 | 路徑 | 用途 |
 |---|---|---|
-| **主產製腳本** | `scripts/gen_word_report.py` | 抓 Firestore → 產 Word。**最重要的檔案** |
+| **主產製腳本** | `scripts/gen_word_report.py` | 抓 Firestore → 產 Word |
+| **網頁版產報告** | `report_gen.js` | 瀏覽器端產 Word（網站「📄 報告」按鈕），版型與 Python 版**位元組級一致** |
+| **翻譯詞庫** | `zh_en.json` | 中英對照唯一來源（**Python 腳本與網站共用**，333+ 筆） |
+| 報告模板 | `report_template.docx` | 網頁版的 docx 部件模板（styles 等，document.xml 會被替換） |
+| 壓縮函式庫 | `vendor/jszip.min.js` | 網頁版打包 docx 用 |
 | 比對腳本 | `scripts/compare_report.py` | 比對 PDF 基準 vs 現行 Firestore 資料 |
 | 網站主檔 | `index.html` | GitHub Pages 單檔網站 |
 | 本文件 | `scripts/HANDOFF_故障日報.md` | 交接文件 |
+
+> ⚠️ **版型雙軌同步規則**：`build_doc()`（Python）與 `buildDocumentXml()`（report_gen.js）
+> 產出相同的 document.xml。改版型必須**兩邊同步改**，並以位元組比對驗證
+> （同一份資料 → Python 產 ref.docx、Node 跑 report_gen.js 產 XML → 逐位元組 diff）。
+> report_gen.js 刻意保留 python-docx 的重複 tblGrid/tcW 輸出習慣，**勿「修正」**。
 
 > 產出的 `.docx` 報告與 `pdf_baseline.json` 屬每日產物，不進 repo（見 `scripts/.gitignore`）。
 
@@ -157,24 +166,32 @@ STATUS_ORDER = {"已修復完成":0, "故障":1, "維修中":2, "待確認":3}  
 
 ## 7. 翻譯機制
 
-`gen_word_report.py` 內含 `ZH_EN` 字典（**200+ 筆**）涵蓋所有故障描述。
-`translate(zh)` 找不到時回傳原文，並在執行結束印出 WARNING 列出未翻譯項目。
+詞庫在 **repo 根目錄 `zh_en.json`**（2026-07-09 起，Python 腳本與網站共用的唯一來源，333+ 筆）。
+`translate(zh)` 以 `zh.strip()` 精確比對，找不到時回傳原文；
+Python 腳本執行結束印 WARNING、網頁版產報告後跳 alert 提示未收錄筆數。
 
 **新增翻譯的標準流程**：
-1. 執行腳本，看是否印出 `WARNING: N untranslated descriptions`
-2. 若有，跑小腳本比對 Firestore 所有 desc vs `ZH_EN` keys 找出缺漏
-3. 把新的中英對照補進 `ZH_EN` 字典結尾（`}` 前）
-4. 重跑腳本，確認無 WARNING
+1. 執行腳本看 WARNING（或網頁產報告看 alert）
+2. 比對 Firestore 所有 desc vs `zh_en.json` keys 找出缺漏
+3. 把新的中英對照補進 `zh_en.json`
+4. 重跑確認無 WARNING —— commit 後**網站與腳本同時生效**
 
 ---
 
 ## 8. 產製指令
 
+**一般使用者**：直接按網站「📄 報告 Report」按鈕（見第 9 節），不需要跑腳本。
+
+**腳本版（AI/管理者）**：
 ```bash
 cd scripts
 python3 gen_word_report.py
 # 輸出：故障日報_YYYY-MM-DD.docx (TODAY 用系統當天日期)
 ```
+
+**2026-07-09 兩項修正**：
+- 摘要統計只計 ROTATIONS 內的車（faultData 已含 74G/75G，不過濾會混入他單位項目）
+- 支援「均完成 All Clear」狀態（綠色、排最前；網站清點功能寫入的狀態）
 
 **相依套件**：`python-docx`（Word）、`PyMuPDF`/`fitz`（讀 PDF 比對用）
 
@@ -187,6 +204,13 @@ python3 gen_word_report.py
 ---
 
 ## 9. 網站功能現況（2026-07-05 大改版 PR #11–#15；2026-07-07 多單位）
+
+### 📄 網頁產報告（2026-07-09 新增）
+- header「📄 報告 Report」按鈕：以**已儲存的雲端資料**當場產出本單位 Word 日報並下載
+- 73G 依 ROTATIONS 分四輪；74G/75G 單一「全車清單」段；檔名 `故障日報_{單位}_{日期}.docx`
+- 有未儲存變更或雲端未載入時會先 confirm 提醒；未收錄翻譯會 alert 筆數
+- 依賴檔按下按鈕才動態載入（jszip、report_gen.js、zh_en.json、report_template.docx）
+- 產出的 document.xml 與 Python 版位元組一致（驗證方法見第 2 節同步規則）
 
 ### 清點模式（2026-07-07 新增）
 - 車輛分類新增「**尚未檢查 unchecked**」＝雲端無任何紀錄的車（先前這類車被誤計入待確認）
