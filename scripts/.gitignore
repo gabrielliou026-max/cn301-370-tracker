@@ -2,3 +2,5 @@
 故障日報_*.docx
 *.docx
 pdf_baseline.json
+__pycache__/
+__pycache__/
