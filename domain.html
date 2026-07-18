@@ -1,0 +1,587 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Domain Join Progress</title>
+<style>
+  :root { color-scheme: light; }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: 'Segoe UI', Arial, sans-serif; background: #f0f4f8; color: #1a2332; padding-bottom: 72px; }
+
+  header {
+    background: linear-gradient(135deg, #1a2f5e 0%, #2d4a8a 100%);
+    color: white; padding: 18px 28px;
+    display: flex; align-items: center; gap: 16px; flex-wrap: wrap;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.25);
+  }
+  header .title-block h1 { font-size: 1.15rem; font-weight: 700; letter-spacing: 0.5px; }
+  header .title-block p { font-size: 0.78rem; opacity: 0.8; margin-top: 3px; }
+  .badge {
+    margin-left: auto; background: rgba(255,255,255,0.15);
+    border: 1px solid rgba(255,255,255,0.3); border-radius: 20px;
+    padding: 6px 14px; font-size: 0.8rem; white-space: nowrap;
+  }
+  .export-btn {
+    background: rgba(255,255,255,0.15); color: white;
+    border: 1px solid rgba(255,255,255,0.3); border-radius: 20px;
+    padding: 6px 14px; font-size: 0.8rem; font-family: inherit;
+    cursor: pointer; white-space: nowrap; transition: background 0.15s;
+  }
+  .export-btn:hover { background: rgba(255,255,255,0.28); }
+
+  .unit-tabs {
+    display: flex; gap: 8px; padding: 10px 28px;
+    background: white; border-bottom: 1px solid #dde3ed;
+  }
+  .unit-tabs a {
+    text-decoration: none; font-size: 0.85rem; font-weight: 700;
+    color: #64748b; padding: 6px 20px; border-radius: 20px;
+    border: 1px solid #e2e8f0; background: #f8fafc; transition: all 0.15s;
+  }
+  .unit-tabs a:hover { border-color: #2d4a8a; color: #2d4a8a; }
+  .unit-tabs a.active { background: #1a2f5e; color: white; border-color: #1a2f5e; }
+
+  .summary-bar {
+    display: flex; gap: 14px; padding: 16px 28px;
+    background: white; border-bottom: 1px solid #dde3ed; flex-wrap: wrap;
+  }
+  .stat-card {
+    flex: 1; min-width: 100px; background: #f8fafc;
+    border-radius: 10px; border: 1px solid #e2e8f0;
+    padding: 12px 16px; text-align: center;
+    cursor: pointer; user-select: none; transition: box-shadow 0.15s, transform 0.1s;
+  }
+  .stat-card:hover { box-shadow: 0 2px 8px rgba(0,0,0,0.1); }
+  .stat-card:active { transform: scale(0.97); }
+  .stat-card.active { outline: 2px solid #2d4a8a; background: #eff6ff; }
+  .stat-card .num { font-size: 1.75rem; font-weight: 800; line-height: 1; }
+  .stat-card .lbl { font-size: 0.7rem; color: #64748b; margin-top: 4px; line-height: 1.4; }
+  .s-total .num { color: #1a2f5e; }
+  .s-notstarted .num { color: #94a3b8; }
+  .s-progress .num { color: #d97706; }
+  .s-done .num { color: #16a34a; }
+
+  .progress-wrap { padding: 0 28px 14px; background: white; border-bottom: 1px solid #dde3ed; }
+  .progress-track { height: 10px; background: #e2e8f0; border-radius: 6px; overflow: hidden; margin-top: 2px; }
+  .progress-fill { height: 100%; background: linear-gradient(90deg, #16a34a, #22c55e); border-radius: 6px; transition: width 0.5s ease; }
+  .progress-label { font-size: 0.75rem; color: #64748b; margin-bottom: 4px; }
+
+  .conn-banner { padding: 10px 28px; font-size: 0.85rem; background: #eff6ff; color: #1d4ed8; border-bottom: 1px solid #dde3ed; }
+  .conn-banner.error { background: #fef2f2; color: #b91c1c; }
+
+  .filter-bar { display: flex; align-items: center; gap: 12px; padding: 14px 28px 0; flex-wrap: wrap; }
+  .search-box {
+    width: 340px; max-width: 100%;
+    border: 1px solid #e2e8f0; border-radius: 20px;
+    padding: 8px 14px; font-size: 0.85rem; font-family: inherit;
+    outline: none; background: white;
+  }
+  .search-box:focus { border-color: #2d4a8a; box-shadow: 0 0 0 3px rgba(45,74,138,0.12); }
+  .filter-hint { font-size: 0.78rem; color: #2d4a8a; font-weight: 600; }
+
+  .table-wrap { padding: 20px 28px; }
+  table {
+    width: 100%; border-collapse: collapse; background: white;
+    border-radius: 12px; box-shadow: 0 1px 6px rgba(0,0,0,0.08); font-size: 0.85rem;
+  }
+  thead { background: #1a2f5e; color: white; }
+  thead th {
+    padding: 12px 10px; text-align: left; font-weight: 600; font-size: 0.75rem; letter-spacing: 0.3px;
+    position: sticky; top: 0; background: #1a2f5e; z-index: 5;
+  }
+  thead th.comp-col { text-align: center; }
+  thead th:first-child { border-top-left-radius: 12px; }
+  thead th:last-child { border-top-right-radius: 12px; }
+  tbody tr { border-bottom: 1px solid #f1f5f9; transition: background 0.2s; }
+  tbody tr:last-child { border-bottom: none; }
+  tbody tr:last-child td:first-child { border-bottom-left-radius: 12px; }
+  tbody tr:last-child td:last-child { border-bottom-right-radius: 12px; }
+  tbody td { padding: 8px 10px; vertical-align: middle; }
+  .td-no { color: #94a3b8; font-size: 0.75rem; text-align: center; }
+  .td-car { font-weight: 700; color: #1a2f5e; font-size: 0.9rem; font-family: monospace; white-space: nowrap; }
+  .td-comp { text-align: center; }
+  .td-pct { text-align: center; font-weight: 700; font-size: 0.8rem; white-space: nowrap; }
+
+  /* Component status pill (click to cycle) */
+  .comp-pill {
+    display: inline-block; min-width: 74px;
+    border: 1px solid #e2e8f0; border-radius: 16px;
+    padding: 5px 10px; font-size: 0.72rem; font-weight: 700;
+    font-family: inherit; cursor: pointer; user-select: none;
+    text-align: center; transition: all 0.12s;
+  }
+  .comp-pill:active { transform: scale(0.95); }
+  .c-pending { background: #f1f5f9; color: #64748b; border-color: #e2e8f0; }
+  .c-progress { background: #fef3c7; color: #92400e; border-color: #fcd34d; }
+  .c-done { background: #dcfce7; color: #166534; border-color: #86efac; }
+
+  .quick-cell { text-align: center; white-space: nowrap; }
+  .alldone-btn {
+    border: 1px solid #86efac; background: #f0fdf4; color: #166534;
+    border-radius: 8px; padding: 5px 12px; font-size: 0.72rem;
+    font-weight: 700; font-family: inherit; cursor: pointer; transition: all 0.15s;
+  }
+  .alldone-btn:hover { background: #dcfce7; border-color: #16a34a; }
+
+  /* Save bar */
+  .save-bar {
+    position: fixed; bottom: 0; left: 0; right: 0; z-index: 1000;
+    background: linear-gradient(135deg, #1a2f5e, #2d4a8a);
+    color: white; padding: 12px 28px;
+    display: none; align-items: center; gap: 16px; flex-wrap: wrap;
+    box-shadow: 0 -2px 14px rgba(0,0,0,0.3);
+  }
+  .save-bar-text { font-size: 0.85rem; }
+  .save-bar-text strong { color: #fbbf24; font-size: 1.05rem; }
+  .save-btn, .discard-btn {
+    border: none; border-radius: 8px; padding: 8px 18px;
+    font-size: 0.82rem; font-weight: 700; font-family: inherit;
+    cursor: pointer; transition: filter 0.15s, transform 0.1s;
+  }
+  .save-btn { background: #16a34a; color: white; margin-left: auto; }
+  .save-btn:hover { filter: brightness(1.1); }
+  .save-btn:active, .discard-btn:active { transform: scale(0.96); }
+  .discard-btn { background: rgba(255,255,255,0.12); color: white; border: 1px solid rgba(255,255,255,0.35); }
+  .discard-btn:hover { background: rgba(255,255,255,0.22); }
+
+  /* Modal */
+  .modal-overlay {
+    position: fixed; inset: 0; z-index: 2000; background: rgba(0,0,0,0.45);
+    display: none; align-items: center; justify-content: center; padding: 20px;
+  }
+  .modal { background: white; border-radius: 16px; padding: 28px 32px; width: 420px; max-width: 100%; box-shadow: 0 8px 32px rgba(0,0,0,0.22); }
+  .modal h3 { font-size: 1.1rem; color: #1a2332; margin-bottom: 10px; }
+  .modal .modal-desc { font-size: 0.88rem; color: #475569; margin-bottom: 16px; line-height: 1.65; }
+  .modal-label { display: block; font-size: 0.8rem; font-weight: 600; color: #1a2332; margin-bottom: 6px; }
+  .editor-wrap { display: flex; flex-direction: column; gap: 8px; margin-bottom: 20px; }
+  .modal-input {
+    width: 100%; border: 1px solid #e2e8f0; border-radius: 8px;
+    padding: 9px 12px; font-size: 16px; font-family: inherit;
+    outline: none; background: #f8fafc; color: #1a2332;
+  }
+  select.modal-input { cursor: pointer; }
+  .modal-input:focus { border-color: #2d4a8a; background: white; box-shadow: 0 0 0 3px rgba(45,74,138,0.12); }
+  .modal-input.input-error { border-color: #dc2626; background: #fef2f2; }
+  .modal-actions { display: flex; gap: 10px; justify-content: flex-end; }
+  .btn-cancel { border: 1px solid #e2e8f0; background: white; color: #64748b; border-radius: 8px; padding: 8px 18px; font-size: 0.85rem; font-family: inherit; cursor: pointer; }
+  .btn-cancel:hover { background: #f8fafc; }
+  .btn-confirm { background: #16a34a; color: white; border: none; border-radius: 8px; padding: 8px 18px; font-size: 0.85rem; font-weight: 700; font-family: inherit; cursor: pointer; }
+  .btn-confirm:hover { filter: brightness(1.1); }
+  .warn-text { color: #dc2626; font-size: 0.8rem; }
+
+  footer { text-align: center; padding: 14px; font-size: 0.72rem; color: #94a3b8; border-top: 1px solid #e2e8f0; background: white; }
+  .legend { display: flex; gap: 14px; justify-content: center; flex-wrap: wrap; margin-top: 6px; }
+  .legend span { display: inline-flex; align-items: center; gap: 4px; }
+  .legend i { width: 12px; height: 12px; border-radius: 4px; display: inline-block; }
+
+  @media (max-width: 720px) {
+    body { padding-bottom: 120px; }
+    header { padding: 12px 14px; gap: 10px; }
+    .unit-tabs { padding: 8px 12px; }
+    .unit-tabs a { flex: 1; text-align: center; padding: 8px 0; }
+    .summary-bar { padding: 10px 12px; gap: 8px; }
+    .stat-card { min-width: calc(50% - 8px); padding: 8px 6px; }
+    .progress-wrap { padding: 0 12px 12px; }
+    .conn-banner { padding: 10px 12px; }
+    .filter-bar { padding: 12px 12px 0; }
+    .search-box { width: 100%; font-size: 16px; }
+    .table-wrap { padding: 12px; overflow-x: auto; }
+    table { min-width: 640px; }
+  }
+</style>
+</head>
+<body>
+
+<header>
+  <div style="font-size:2rem;">🌐</div>
+  <div class="title-block">
+    <h1>Domain Join Progress Tracker</h1>
+    <p id="unitSubtitle">Unit: 74G &nbsp;|&nbsp; Cars: 40</p>
+  </div>
+  <div class="badge" id="headerDate">Loading…</div>
+  <button class="export-btn" onclick="exportBackup()" title="Download this unit's data as JSON">📥 Backup</button>
+</header>
+
+<nav class="unit-tabs">
+  <a href="?unit=74G" data-unit="74G">74G</a>
+  <a href="?unit=75G" data-unit="75G">75G</a>
+</nav>
+
+<div class="summary-bar">
+  <div class="stat-card s-total" onclick="setFilter(null)" title="Show all"><div class="num" id="statTotal">40</div><div class="lbl">Total Cars</div></div>
+  <div class="stat-card s-notstarted" onclick="setFilter('notstarted')" title="Filter"><div class="num" id="statNotStarted">0</div><div class="lbl">Not Started</div></div>
+  <div class="stat-card s-progress" onclick="setFilter('progress')" title="Filter"><div class="num" id="statProgress">0</div><div class="lbl">In Progress</div></div>
+  <div class="stat-card s-done" onclick="setFilter('done')" title="Filter"><div class="num" id="statDone">0</div><div class="lbl">Completed</div></div>
+</div>
+
+<div class="progress-wrap">
+  <div class="progress-label" id="progressLabel">Overall: 0 / 0 components done</div>
+  <div class="progress-track"><div class="progress-fill" id="progressFill" style="width:0%"></div></div>
+</div>
+
+<div class="conn-banner" id="connBanner">⏳ Loading cloud data…</div>
+
+<div class="filter-bar">
+  <input class="search-box" id="searchBox" type="search" placeholder="🔍 Search car number" oninput="searchQuery=this.value;applyFilter()">
+  <span class="filter-hint" id="filterHint"></span>
+</div>
+
+<div class="table-wrap">
+  <table>
+    <thead><tr id="headRow"></tr></thead>
+    <tbody id="tableBody"></tbody>
+  </table>
+</div>
+
+<div class="save-bar" id="saveBar">
+  <span class="save-bar-text" id="saveBarText">📝 You have <strong>0</strong> unsaved change(s)</span>
+  <button class="discard-btn" onclick="discardChanges()">✕ Discard</button>
+  <button class="save-btn" onclick="openSaveConfirm()">💾 Save &amp; Submit</button>
+</div>
+
+<div class="modal-overlay" id="saveModal">
+  <div class="modal">
+    <h3>💾 Confirm Save</h3>
+    <p class="modal-desc">
+      Save <strong id="modalCount">0</strong> change(s) and sync to all users?<br>
+      <span class="warn-text">⚠️ This will overwrite cloud data.</span>
+    </p>
+    <label class="modal-label" for="editorSelect">✍️ Updated by (Required)</label>
+    <div class="editor-wrap">
+      <select id="editorSelect" class="modal-input" onchange="onEditorSelect(this)"></select>
+      <input id="editorOther" class="modal-input" type="text" style="display:none" placeholder="Enter your name" oninput="this.classList.remove('input-error')">
+    </div>
+    <div class="modal-actions">
+      <button class="btn-cancel" onclick="closeSaveModal()">✕ Cancel</button>
+      <button class="btn-confirm" onclick="commitChanges()">✓ Confirm</button>
+    </div>
+  </div>
+</div>
+
+<footer>
+  Domain Join Progress Tracker &nbsp;|&nbsp; Last Updated: <span id="footerUpdated">-</span>
+  <div class="legend">
+    <span><i style="background:#f1f5f9;border:1px solid #e2e8f0;"></i>Pending</span>
+    <span><i style="background:#fef3c7;"></i>In Progress</span>
+    <span><i style="background:#dcfce7;"></i>Done</span>
+  </div>
+</footer>
+
+<script>
+// ── Config ──────────────────────────────────────────────────────────────────
+// 每台車要加入網域的元件清單；增減/改名只需改這個陣列（key 為 Firestore 欄位名，勿與 updatedAt/updatedBy/note 衝突）
+const COMPONENTS = [
+  { key: "DC_SVR",  label: "DC / SVR" },
+  { key: "DNS_VM",  label: "DNS VM" },
+  { key: "MOPS_VM", label: "MOPS VM" },
+  { key: "MGR",     label: "MGR Laptop" },
+  { key: "OPR",     label: "OPR Laptop" },
+  { key: "TIME",    label: "Time Sync" },
+];
+const RESERVED = new Set(["updatedAt", "updatedBy", "note"]);
+
+// 狀態循環：pending → progress → done → pending
+const STATUS_CYCLE = ["pending", "progress", "done"];
+const STATUS_META = {
+  pending:  { cls: "c-pending",  label: "Pending" },
+  progress: { cls: "c-progress", label: "In Progress" },
+  done:     { cls: "c-done",     label: "Done" },
+};
+
+function carRange(a, b) { return Array.from({ length: b - a + 1 }, (_, i) => `CN${a + i}`); }
+const UNITS = {
+  "74G": { cars: ["NMS581","NMS582", ...carRange(501,514), ...carRange(519,531), ...carRange(536,546)] }, // 40
+  "75G": { cars: ["NMS481","NMS482", ...carRange(401,414), ...carRange(419,431), ...carRange(436,446)] }, // 40
+};
+const UNIT_ID = (() => {
+  const u = new URLSearchParams(location.search).get("unit") || "74G";
+  return UNITS[u] ? u : "74G";
+})();
+const cars = UNITS[UNIT_ID].cars;
+const TOTAL = cars.length;
+const COLLECTION = "domainProgress";
+
+const WITNESS_NAMES = ["Gabriel","Song","Vicky","Danny","Tony","Peter","Tracy","Joey","Nessa","Jerome","Tim. Y","Mike. C","Ponjus","Arthur","Victoria","Kent","Sandy"];
+
+// state[car] = { DC_SVR:"pending", ... , _dirty:bool }
+const state = {};
+const savedCloud = {};
+cars.forEach(car => {
+  const rec = {};
+  COMPONENTS.forEach(c => rec[c.key] = "pending");
+  state[car] = rec;
+  savedCloud[car] = null;
+});
+
+function escH(s) { return String(s || "").replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;").replace(/"/g,"&quot;"); }
+function pad(n) { return String(n).padStart(2,"0"); }
+
+// ── Render ──
+function renderHead() {
+  document.getElementById("headRow").innerHTML =
+    `<th style="width:36px;text-align:center;">#</th><th style="width:90px;">Car No.</th>` +
+    COMPONENTS.map(c => `<th class="comp-col">${escH(c.label)}</th>`).join("") +
+    `<th class="comp-col" style="width:70px;">%</th><th class="comp-col" style="width:120px;">Set All</th>`;
+}
+
+function renderAll() {
+  renderHead();
+  const tbody = document.getElementById("tableBody");
+  tbody.innerHTML = cars.map((car, idx) =>
+    `<tr id="row_${car}"><td class="td-no">${idx+1}</td><td class="td-car">${car}</td>${cellsHtml(car)}</tr>`
+  ).join("");
+  updateStats();
+  const now = new Date();
+  document.getElementById("headerDate").textContent = `📅 ${now.getFullYear()}-${pad(now.getMonth()+1)}-${pad(now.getDate())}`;
+}
+
+function cellsHtml(car) {
+  const rec = state[car];
+  const pills = COMPONENTS.map(c => {
+    const st = rec[c.key] || "pending";
+    const m = STATUS_META[st];
+    return `<td class="td-comp"><span class="comp-pill ${m.cls}" onclick="cycleComp('${car}','${c.key}')" title="${escH(c.label)}">${m.label}</span></td>`;
+  }).join("");
+  const done = COMPONENTS.filter(c => rec[c.key] === "done").length;
+  const pct = Math.round((done / COMPONENTS.length) * 100);
+  const pctColor = pct === 100 ? "#16a34a" : pct === 0 ? "#94a3b8" : "#d97706";
+  const quick = `<td class="quick-cell"><button class="alldone-btn" onclick="setAllDone('${car}')">✓ All Done</button></td>`;
+  return pills + `<td class="td-pct" style="color:${pctColor}">${pct}%</td>` + quick;
+}
+
+function rerenderRow(car) {
+  const row = document.getElementById(`row_${car}`);
+  if (!row) return;
+  const idx = cars.indexOf(car);
+  row.innerHTML = `<td class="td-no">${idx+1}</td><td class="td-car">${car}</td>${cellsHtml(car)}`;
+  updateRowBg(car);
+}
+
+function updateRowBg(car) {
+  const row = document.getElementById(`row_${car}`);
+  if (!row) return;
+  const cat = carCategory(car);
+  row.style.background = cat === "done" ? "#f0fdf4" : cat === "progress" ? "#fffbeb" : "";
+}
+
+// ── Category / Stats ──
+function carCategory(car) {
+  const rec = state[car];
+  const vals = COMPONENTS.map(c => rec[c.key] || "pending");
+  if (vals.every(v => v === "done")) return "done";
+  if (vals.every(v => v === "pending")) return "notstarted";
+  return "progress";
+}
+
+function updateStats() {
+  let ns = 0, pr = 0, dn = 0, doneComp = 0;
+  const totalComp = TOTAL * COMPONENTS.length;
+  cars.forEach(car => {
+    const cat = carCategory(car);
+    if (cat === "done") dn++; else if (cat === "progress") pr++; else ns++;
+    doneComp += COMPONENTS.filter(c => state[car][c.key] === "done").length;
+  });
+  document.getElementById("statNotStarted").textContent = ns;
+  document.getElementById("statProgress").textContent = pr;
+  document.getElementById("statDone").textContent = dn;
+  const rate = Math.round((doneComp / totalComp) * 100);
+  document.getElementById("progressFill").style.width = rate + "%";
+  document.getElementById("progressLabel").textContent =
+    `Overall: ${doneComp} / ${totalComp} components done (${rate}%) — ${dn}/${TOTAL} cars complete`;
+  applyFilter();
+}
+
+// ── Filter / Search ──
+let filterCat = null, searchQuery = "";
+const FILTER_NAMES = { notstarted: "Not Started", progress: "In Progress", done: "Completed" };
+function setFilter(k) { filterCat = (k && filterCat !== k) ? k : null; applyFilter(); }
+function applyFilter() {
+  const q = searchQuery.trim().toLowerCase();
+  cars.forEach(car => {
+    const row = document.getElementById(`row_${car}`);
+    if (!row) return;
+    let show = !filterCat || carCategory(car) === filterCat;
+    if (show && q) show = car.toLowerCase().includes(q);
+    row.style.display = show ? "" : "none";
+  });
+  document.querySelectorAll(".stat-card.active").forEach(el => el.classList.remove("active"));
+  if (filterCat) {
+    const map = { notstarted: "s-notstarted", progress: "s-progress", done: "s-done" };
+    const card = document.querySelector("." + map[filterCat]);
+    if (card) card.classList.add("active");
+  }
+  document.getElementById("filterHint").textContent = filterCat ? `Filter: ${FILTER_NAMES[filterCat]} (tap card again to clear)` : "";
+}
+
+// ── Actions ──
+function cycleComp(car, key) {
+  const cur = state[car][key] || "pending";
+  const next = STATUS_CYCLE[(STATUS_CYCLE.indexOf(cur) + 1) % STATUS_CYCLE.length];
+  state[car][key] = next;
+  state[car]._dirty = true;
+  rerenderRow(car);
+  updateStats();
+  updateSaveBar();
+}
+function setAllDone(car) {
+  COMPONENTS.forEach(c => state[car][c.key] = "done");
+  state[car]._dirty = true;
+  rerenderRow(car);
+  updateStats();
+  updateSaveBar();
+}
+
+// ── Save bar ──
+function countPending() { return cars.filter(car => state[car]._dirty).length; }
+function updateSaveBar() {
+  const count = countPending();
+  document.getElementById("saveBarText").innerHTML = `📝 You have <strong>${count}</strong> unsaved car(s)`;
+  document.getElementById("saveBar").style.display = count > 0 ? "flex" : "none";
+}
+function discardChanges() {
+  cars.forEach(car => {
+    const rec = {};
+    if (savedCloud[car]) COMPONENTS.forEach(c => rec[c.key] = savedCloud[car][c.key] || "pending");
+    else COMPONENTS.forEach(c => rec[c.key] = "pending");
+    state[car] = rec;
+    rerenderRow(car);
+  });
+  document.getElementById("saveBar").style.display = "none";
+  updateStats();
+}
+
+// ── Updater name ──
+function onEditorSelect(sel) {
+  sel.classList.remove("input-error");
+  const other = document.getElementById("editorOther");
+  other.style.display = sel.value === "__other__" ? "block" : "none";
+  if (sel.value === "__other__") setTimeout(() => other.focus(), 0);
+}
+function openSaveConfirm() {
+  document.getElementById("modalCount").textContent = countPending();
+  const stored = localStorage.getItem("editorName") || "";
+  const sel = document.getElementById("editorSelect"), other = document.getElementById("editorOther");
+  if (stored && WITNESS_NAMES.includes(stored)) { sel.value = stored; other.style.display = "none"; }
+  else if (stored) { sel.value = "__other__"; other.value = stored; other.style.display = "block"; }
+  document.getElementById("saveModal").style.display = "flex";
+}
+function closeSaveModal() { document.getElementById("saveModal").style.display = "none"; }
+
+function commitChanges() {
+  const sel = document.getElementById("editorSelect"), other = document.getElementById("editorOther");
+  const editor = sel.value === "__other__" ? other.value.trim() : sel.value;
+  if (!editor) { const t = sel.value === "__other__" ? other : sel; t.classList.add("input-error"); t.focus(); return; }
+  localStorage.setItem("editorName", editor);
+  closeSaveModal();
+  document.getElementById("saveBarText").innerHTML = "⏳ Saving…";
+  const batch = db.batch();
+  const now = new Date().toISOString();
+  const changed = [];
+  cars.forEach(car => {
+    if (!state[car]._dirty) return;
+    changed.push(car);
+    const data = { updatedAt: now, updatedBy: editor };
+    COMPONENTS.forEach(c => data[c.key] = state[car][c.key] || "pending");
+    batch.set(db.collection(COLLECTION).doc(car), data, { merge: true });
+  });
+  batch.commit().then(() => {
+    changed.forEach(car => {
+      delete state[car]._dirty;
+      savedCloud[car] = {}; COMPONENTS.forEach(c => savedCloud[car][c.key] = state[car][c.key]);
+    });
+    document.getElementById("saveBarText").innerHTML = "✅ Saved &amp; synced!";
+    setTimeout(() => { if (countPending() === 0) document.getElementById("saveBar").style.display = "none"; else updateSaveBar(); }, 1800);
+  }).catch(err => {
+    document.getElementById("saveBarText").innerHTML = "❌ Save failed, please retry";
+    console.warn("commit failed", err);
+  });
+}
+
+// ── Backup ──
+function exportBackup() {
+  const out = { _meta: { exportedAt: new Date().toISOString(), collection: COLLECTION, unit: UNIT_ID } };
+  let n = 0;
+  cars.forEach(car => { if (savedCloud[car]) { out[car] = { ...savedCloud[car] }; n++; } });
+  if (n === 0 && !confirm("No cloud data loaded yet. Export empty backup?")) return;
+  const now = new Date();
+  const name = `domainProgress_${UNIT_ID}_${now.getFullYear()}-${pad(now.getMonth()+1)}-${pad(now.getDate())}_${pad(now.getHours())}${pad(now.getMinutes())}.json`;
+  const blob = new Blob([JSON.stringify(out, null, 2)], { type: "application/json" });
+  const a = document.createElement("a"); a.href = URL.createObjectURL(blob); a.download = name;
+  document.body.appendChild(a); a.click(); a.remove();
+  setTimeout(() => URL.revokeObjectURL(a.href), 10000);
+}
+
+// ── Connection banner / footer ──
+let firstLoadDone = false;
+function hideConnBanner() { document.getElementById("connBanner").style.display = "none"; }
+function showConnError(msg) {
+  const b = document.getElementById("connBanner");
+  b.textContent = msg || "⚠️ Cannot connect to cloud database — data may be incomplete";
+  b.classList.add("error"); b.style.display = "block";
+}
+setTimeout(() => { if (!firstLoadDone) showConnError("⚠️ Connection timeout, retrying…"); }, 10000);
+
+let latestUpdatedAt = null, latestUpdatedBy = "";
+function trackLatestUpdated(iso, by) {
+  if (typeof iso === "string" && (!latestUpdatedAt || iso > latestUpdatedAt)) { latestUpdatedAt = iso; latestUpdatedBy = by || ""; }
+}
+function updateFooterUpdated() {
+  const footer = document.getElementById("footerUpdated");
+  if (!latestUpdatedAt) { footer.textContent = "-"; return; }
+  const d = new Date(latestUpdatedAt);
+  if (isNaN(d.getTime())) { footer.textContent = "-"; return; }
+  const t = `${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())} ${pad(d.getHours())}:${pad(d.getMinutes())}`;
+  const text = latestUpdatedBy ? `${t} (${latestUpdatedBy})` : t;
+  footer.textContent = text;
+  document.getElementById("headerDate").textContent = `🕐 Updated ${text}`;
+}
+
+window.addEventListener("beforeunload", e => { if (countPending() > 0) { e.preventDefault(); e.returnValue = ""; } });
+
+// ── Init UI ──
+document.getElementById("unitSubtitle").innerHTML = `Unit: ${UNIT_ID} &nbsp;|&nbsp; Cars: ${TOTAL}`;
+document.getElementById("statTotal").textContent = TOTAL;
+document.querySelectorAll(".unit-tabs a").forEach(a => a.classList.toggle("active", a.dataset.unit === UNIT_ID));
+document.getElementById("editorSelect").innerHTML =
+  `<option value="">— Select name —</option>` +
+  WITNESS_NAMES.map(n => `<option value="${escH(n)}">${escH(n)}</option>`).join("") +
+  `<option value="__other__">✏️ Other… (type a name)</option>`;
+renderAll();
+</script>
+
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore-compat.js"></script>
+<script>
+firebase.initializeApp({
+  apiKey: "AIzaSyBRNMZFCSnWk1X_HZMuDa_ym-Zvwk9ei-U",
+  authDomain: "fics-6e2cd.firebaseapp.com",
+  projectId: "fics-6e2cd",
+  storageBucket: "fics-6e2cd.firebasestorage.app",
+  messagingSenderId: "995935936553",
+  appId: "1:995935936553:web:d5d80b56bed9bf681c3c38"
+});
+const db = firebase.firestore();
+
+db.collection(COLLECTION).onSnapshot(snap => {
+  const changedCars = [];
+  snap.docChanges().forEach(change => {
+    const car = change.doc.id;
+    if (!state[car]) return;
+    changedCars.push(car);
+    const data = change.type === "removed" ? {} : change.doc.data();
+    if (data.updatedAt) trackLatestUpdated(data.updatedAt, data.updatedBy);
+    const cloud = {};
+    COMPONENTS.forEach(c => cloud[c.key] = (typeof data[c.key] === "string") ? data[c.key] : "pending");
+    savedCloud[car] = cloud;
+    // 保留本機未儲存的修改，否則採用雲端
+    if (!state[car]._dirty) { COMPONENTS.forEach(c => state[car][c.key] = cloud[c.key]); }
+  });
+  changedCars.forEach(car => rerenderRow(car));
+  updateStats();
+  updateFooterUpdated();
+  if (!firstLoadDone) { firstLoadDone = true; hideConnBanner(); }
+}, err => { console.warn("snapshot error", err); showConnError(); });
+</script>
+</body>
+</html>
