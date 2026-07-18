@@ -54,8 +54,17 @@ service cloud.firestore {
   獨立 collection `domainProgress`，網址 `?unit=74G`/`?unit=75G` |
 
 > `domain.html` 沿用相同 Firebase 專案（fics-6e2cd），資料在 `domainProgress` collection
-> （doc id = 車號，每個元件一個字串欄位 pending/progress/done）。**Firestore 規則需加開此路徑**
-> （見規則章節）。元件清單在 `domain.html` 的 `COMPONENTS` 陣列，可自由增減。
+> （**已於 2026-07-18 在 Firestore 規則加開此路徑，讀寫實測正常**）。
+> 元件清單在 `domain.html` 的 `COMPONENTS` 陣列，可自由增減。
+>
+> **doc 結構**（doc id = 車號）：
+> - `<元件key>`：狀態字串 `pending`/`progress`/`done`（如 `DC_SVR`、`MGR`）
+> - `<元件key>_note`：該元件未完成原因（非 done 才顯示/儲存，done 時清空）
+> - `person`：完成人員（下拉選 Mark/Tim/Jean/Emma）
+> - `updatedAt` / `updatedBy`：儲存時間與更新人員
+> - **人員名單 `NAMES`（Mark/Tim/Jean/Emma）為 domain.html 專用**，與故障系統的
+>   見證人名單獨立；同時用於「更新人員」與「完成人員」。
+> - 舊 doc 若無 person/note 欄位，程式向下相容（讀不到當空值）。
 
 ---
 

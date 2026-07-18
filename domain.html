@@ -116,6 +116,25 @@
   .c-progress { background: #fef3c7; color: #92400e; border-color: #fcd34d; }
   .c-done { background: #dcfce7; color: #166534; border-color: #86efac; }
 
+  /* Per-component note (shown only when not Done) */
+  .comp-note {
+    display: block; width: 100%; margin-top: 4px;
+    border: 1px solid #e2e8f0; border-radius: 6px;
+    padding: 3px 6px; font-size: 0.68rem; font-family: inherit;
+    color: #1a2332; background: #fff; outline: none;
+  }
+  .comp-note:focus { border-color: #d97706; box-shadow: 0 0 0 2px rgba(217,119,6,0.15); }
+  .comp-note::placeholder { color: #cbd5e1; font-style: italic; }
+
+  /* Per-car completion person */
+  .person-select {
+    border: 1px solid #e2e8f0; border-radius: 8px;
+    padding: 5px 8px; font-size: 0.72rem; font-family: inherit;
+    color: #1a2332; background: #f8fafc; outline: none; cursor: pointer; min-width: 90px;
+  }
+  .person-select:focus { border-color: #2d4a8a; background: white; }
+  .person-select.has-val { background: #ecfdf5; border-color: #86efac; color: #166534; font-weight: 700; }
+
   .quick-cell { text-align: center; white-space: nowrap; }
   .alldone-btn {
     border: 1px solid #86efac; background: #f0fdf4; color: #166534;
@@ -302,14 +321,16 @@ const cars = UNITS[UNIT_ID].cars;
 const TOTAL = cars.length;
 const COLLECTION = "domainProgress";
 
-const WITNESS_NAMES = ["Gabriel","Song","Vicky","Danny","Tony","Peter","Tracy","Joey","Nessa","Jerome","Tim. Y","Mike. C","Ponjus","Arthur","Victoria","Kent","Sandy"];
+// 更新人員 / 完成人員名單（此網站專用，與故障追蹤系統的名單獨立）
+const NAMES = ["Mark","Tim","Jean","Emma"];
 
 // state[car] = { DC_SVR:"pending", ... , _dirty:bool }
 const state = {};
 const savedCloud = {};
+// state[car] = { <comp>:"pending", <comp>_note:"", ... , person:"", _dirty:bool }
 cars.forEach(car => {
-  const rec = {};
-  COMPONENTS.forEach(c => rec[c.key] = "pending");
+  const rec = { person: "" };
+  COMPONENTS.forEach(c => { rec[c.key] = "pending"; rec[c.key + "_note"] = ""; });
   state[car] = rec;
   savedCloud[car] = null;
 });
@@ -322,7 +343,9 @@ function renderHead() {
   document.getElementById("headRow").innerHTML =
     `<th style="width:36px;text-align:center;">#</th><th style="width:90px;">Car No.</th>` +
     COMPONENTS.map(c => `<th class="comp-col">${escH(c.label)}</th>`).join("") +
-    `<th class="comp-col" style="width:70px;">%</th><th class="comp-col" style="width:120px;">Set All</th>`;
+    `<th class="comp-col" style="width:70px;">%</th>` +
+    `<th class="comp-col" style="width:110px;">Completed by</th>` +
+    `<th class="comp-col" style="width:120px;">Set All</th>`;
 }
 
 function renderAll() {
@@ -341,13 +364,26 @@ function cellsHtml(car) {
   const pills = COMPONENTS.map(c => {
     const st = rec[c.key] || "pending";
     const m = STATUS_META[st];
-    return `<td class="td-comp"><span class="comp-pill ${m.cls}" onclick="cycleComp('${car}','${c.key}')" title="${escH(c.label)}">${m.label}</span></td>`;
+    // 註記僅在「非 Done」時顯示（用途是說明未完成原因）
+    const noteHtml = st !== "done"
+      ? `<input class="comp-note" type="text" value="${escH(rec[c.key + "_note"] || "")}"
+                placeholder="note / reason…"
+                oninput="updateNote('${car}','${c.key}',this.value)">`
+      : "";
+    return `<td class="td-comp">
+      <span class="comp-pill ${m.cls}" onclick="cycleComp('${car}','${c.key}')" title="${escH(c.label)}">${m.label}</span>
+      ${noteHtml}
+    </td>`;
   }).join("");
   const done = COMPONENTS.filter(c => rec[c.key] === "done").length;
   const pct = Math.round((done / COMPONENTS.length) * 100);
   const pctColor = pct === 100 ? "#16a34a" : pct === 0 ? "#94a3b8" : "#d97706";
+  const person = rec.person || "";
+  const personOpts = `<option value="">— name —</option>` +
+    NAMES.map(n => `<option value="${escH(n)}"${person === n ? " selected" : ""}>${escH(n)}</option>`).join("");
+  const personCell = `<td class="td-comp"><select class="person-select${person ? " has-val" : ""}" onchange="setPerson('${car}',this.value)">${personOpts}</select></td>`;
   const quick = `<td class="quick-cell"><button class="alldone-btn" onclick="setAllDone('${car}')">✓ All Done</button></td>`;
-  return pills + `<td class="td-pct" style="color:${pctColor}">${pct}%</td>` + quick;
+  return pills + `<td class="td-pct" style="color:${pctColor}">${pct}%</td>` + personCell + quick;
 }
 
 function rerenderRow(car) {
@@ -431,6 +467,18 @@ function setAllDone(car) {
   updateStats();
   updateSaveBar();
 }
+// 註記編輯：不重繪整列以保留輸入焦點（狀態/統計不受註記影響）
+function updateNote(car, key, val) {
+  state[car][key + "_note"] = val;
+  state[car]._dirty = true;
+  updateSaveBar();
+}
+function setPerson(car, val) {
+  state[car].person = val;
+  state[car]._dirty = true;
+  rerenderRow(car);
+  updateSaveBar();
+}
 
 // ── Save bar ──
 function countPending() { return cars.filter(car => state[car]._dirty).length; }
@@ -441,9 +489,15 @@ function updateSaveBar() {
 }
 function discardChanges() {
   cars.forEach(car => {
-    const rec = {};
-    if (savedCloud[car]) COMPONENTS.forEach(c => rec[c.key] = savedCloud[car][c.key] || "pending");
-    else COMPONENTS.forEach(c => rec[c.key] = "pending");
+    const rec = { person: "" };
+    COMPONENTS.forEach(c => { rec[c.key] = "pending"; rec[c.key + "_note"] = ""; });
+    if (savedCloud[car]) {
+      COMPONENTS.forEach(c => {
+        rec[c.key] = savedCloud[car][c.key] || "pending";
+        rec[c.key + "_note"] = savedCloud[car][c.key + "_note"] || "";
+      });
+      rec.person = savedCloud[car].person || "";
+    }
     state[car] = rec;
     rerenderRow(car);
   });
@@ -462,7 +516,7 @@ function openSaveConfirm() {
   document.getElementById("modalCount").textContent = countPending();
   const stored = localStorage.getItem("editorName") || "";
   const sel = document.getElementById("editorSelect"), other = document.getElementById("editorOther");
-  if (stored && WITNESS_NAMES.includes(stored)) { sel.value = stored; other.style.display = "none"; }
+  if (stored && NAMES.includes(stored)) { sel.value = stored; other.style.display = "none"; }
   else if (stored) { sel.value = "__other__"; other.value = stored; other.style.display = "block"; }
   document.getElementById("saveModal").style.display = "flex";
 }
@@ -481,14 +535,21 @@ function commitChanges() {
   cars.forEach(car => {
     if (!state[car]._dirty) return;
     changed.push(car);
-    const data = { updatedAt: now, updatedBy: editor };
-    COMPONENTS.forEach(c => data[c.key] = state[car][c.key] || "pending");
+    const data = { updatedAt: now, updatedBy: editor, person: state[car].person || "" };
+    COMPONENTS.forEach(c => {
+      data[c.key] = state[car][c.key] || "pending";
+      // Done 的元件不需保留未完成原因，一併清空
+      data[c.key + "_note"] = state[car][c.key] === "done" ? "" : (state[car][c.key + "_note"] || "");
+    });
     batch.set(db.collection(COLLECTION).doc(car), data, { merge: true });
   });
   batch.commit().then(() => {
     changed.forEach(car => {
       delete state[car]._dirty;
-      savedCloud[car] = {}; COMPONENTS.forEach(c => savedCloud[car][c.key] = state[car][c.key]);
+      COMPONENTS.forEach(c => { if (state[car][c.key] === "done") state[car][c.key + "_note"] = ""; });
+      savedCloud[car] = {};
+      COMPONENTS.forEach(c => { savedCloud[car][c.key] = state[car][c.key]; savedCloud[car][c.key + "_note"] = state[car][c.key + "_note"] || ""; });
+      savedCloud[car].person = state[car].person || "";
     });
     document.getElementById("saveBarText").innerHTML = "✅ Saved &amp; synced!";
     setTimeout(() => { if (countPending() === 0) document.getElementById("saveBar").style.display = "none"; else updateSaveBar(); }, 1800);
@@ -545,7 +606,7 @@ document.getElementById("statTotal").textContent = TOTAL;
 document.querySelectorAll(".unit-tabs a").forEach(a => a.classList.toggle("active", a.dataset.unit === UNIT_ID));
 document.getElementById("editorSelect").innerHTML =
   `<option value="">— Select name —</option>` +
-  WITNESS_NAMES.map(n => `<option value="${escH(n)}">${escH(n)}</option>`).join("") +
+  NAMES.map(n => `<option value="${escH(n)}">${escH(n)}</option>`).join("") +
   `<option value="__other__">✏️ Other… (type a name)</option>`;
 renderAll();
 </script>
@@ -571,13 +632,20 @@ db.collection(COLLECTION).onSnapshot(snap => {
     changedCars.push(car);
     const data = change.type === "removed" ? {} : change.doc.data();
     if (data.updatedAt) trackLatestUpdated(data.updatedAt, data.updatedBy);
-    const cloud = {};
-    COMPONENTS.forEach(c => cloud[c.key] = (typeof data[c.key] === "string") ? data[c.key] : "pending");
+    const cloud = { person: (typeof data.person === "string") ? data.person : "" };
+    COMPONENTS.forEach(c => {
+      cloud[c.key] = (typeof data[c.key] === "string") ? data[c.key] : "pending";
+      cloud[c.key + "_note"] = (typeof data[c.key + "_note"] === "string") ? data[c.key + "_note"] : "";
+    });
     savedCloud[car] = cloud;
     // 保留本機未儲存的修改，否則採用雲端
-    if (!state[car]._dirty) { COMPONENTS.forEach(c => state[car][c.key] = cloud[c.key]); }
+    if (!state[car]._dirty) {
+      COMPONENTS.forEach(c => { state[car][c.key] = cloud[c.key]; state[car][c.key + "_note"] = cloud[c.key + "_note"]; });
+      state[car].person = cloud.person;
+    }
   });
-  changedCars.forEach(car => rerenderRow(car));
+  // 正在編輯（dirty）的車不重繪，避免輸入註記時失焦
+  changedCars.forEach(car => { if (!state[car]._dirty) rerenderRow(car); });
   updateStats();
   updateFooterUpdated();
   if (!firstLoadDone) { firstLoadDone = true; hideConnBanner(); }
