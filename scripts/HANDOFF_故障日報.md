@@ -50,6 +50,12 @@ service cloud.firestore {
 |---|---|
 | **追蹤網站** | `index.html` 單檔，GitHub Pages 部署（main 分支），多人即時填報故障 |
 | **日報腳本** | `scripts/gen_word_report.py`，抓 Firestore 產 Word 故障日報（中英對照） |
+| **入網域追蹤** | `domain.html`（2026-07-18 新增），74G/75G 各車元件加入網域進度，全英文；
+  獨立 collection `domainProgress`，網址 `?unit=74G`/`?unit=75G` |
+
+> `domain.html` 沿用相同 Firebase 專案（fics-6e2cd），資料在 `domainProgress` collection
+> （doc id = 車號，每個元件一個字串欄位 pending/progress/done）。**Firestore 規則需加開此路徑**
+> （見規則章節）。元件清單在 `domain.html` 的 `COMPONENTS` 陣列，可自由增減。
 
 ---
 
