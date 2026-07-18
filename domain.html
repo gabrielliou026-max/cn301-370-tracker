@@ -117,6 +117,7 @@
   .c-done { background: #dcfce7; color: #166534; border-color: #86efac; }
 
   /* Per-component note (shown only when not Done) */
+  .comp-cap { display: block; font-size: 0.6rem; color: #64748b; font-weight: 700; margin-bottom: 2px; letter-spacing: 0.2px; }
   .comp-note {
     display: block; width: 100%; margin-top: 4px;
     border: 1px solid #e2e8f0; border-radius: 6px;
@@ -291,7 +292,7 @@
 // ── Config ──────────────────────────────────────────────────────────────────
 // 每台車要加入網域的元件清單；增減/改名只需改這個陣列（key 為 Firestore 欄位名，勿與 updatedAt/updatedBy/note 衝突）
 const COMPONENTS = [
-  { key: "DC_SVR",  label: "DC / SVR" },
+  { key: "DC_SVR",  label: "DNS SVR", labelNMS: "DC/DNS SVR" },  // CN=DNS SVR；NMS=DC/DNS SVR
   { key: "DNS_VM",  label: "DNS VM" },
   { key: "MOPS_VM", label: "MOPS VM" },
   { key: "MGR",     label: "MGR Laptop" },
@@ -307,6 +308,10 @@ const STATUS_META = {
   progress: { cls: "c-progress", label: "In Progress" },
   done:     { cls: "c-done",     label: "Done" },
 };
+
+// 元件名稱可依車型不同（如伺服器：CN=DNS SVR、NMS=DC/DNS SVR）
+function isNMS(car) { return car.startsWith("NMS"); }
+function compLabel(c, car) { return (isNMS(car) && c.labelNMS) ? c.labelNMS : c.label; }
 
 function carRange(a, b) { return Array.from({ length: b - a + 1 }, (_, i) => `CN${a + i}`); }
 const UNITS = {
@@ -370,8 +375,12 @@ function cellsHtml(car) {
                 placeholder="note / reason…"
                 oninput="updateNote('${car}','${c.key}',this.value)">`
       : "";
+    // 元件名稱依車型不同時（如 NMS 的伺服器），在 pill 上方顯示小字實際名稱
+    const lbl = compLabel(c, car);
+    const capHtml = lbl !== c.label ? `<span class="comp-cap">${escH(lbl)}</span>` : "";
     return `<td class="td-comp">
-      <span class="comp-pill ${m.cls}" onclick="cycleComp('${car}','${c.key}')" title="${escH(c.label)}">${m.label}</span>
+      ${capHtml}
+      <span class="comp-pill ${m.cls}" onclick="cycleComp('${car}','${c.key}')" title="${escH(lbl)}">${m.label}</span>
       ${noteHtml}
     </td>`;
   }).join("");
