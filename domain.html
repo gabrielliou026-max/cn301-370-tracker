@@ -91,6 +91,7 @@
     position: sticky; top: 0; background: #1a2f5e; z-index: 5;
   }
   thead th.comp-col { text-align: center; }
+  .th-stat { display: block; font-size: 0.65rem; font-weight: 400; opacity: 0.75; margin-top: 2px; }
   thead th:first-child { border-top-left-radius: 12px; }
   thead th:last-child { border-top-right-radius: 12px; }
   tbody tr { border-bottom: 1px solid #f1f5f9; transition: background 0.2s; }
@@ -115,9 +116,12 @@
   .c-pending { background: #f1f5f9; color: #64748b; border-color: #e2e8f0; }
   .c-progress { background: #fef3c7; color: #92400e; border-color: #fcd34d; }
   .c-done { background: #dcfce7; color: #166534; border-color: #86efac; }
+  .comp-pill.locked { opacity: 0.45; cursor: not-allowed; }
+  .comp-note[disabled], .person-select[disabled], .alldone-btn[disabled] { opacity: 0.45; cursor: not-allowed; }
 
   /* Per-component note (shown only when not Done) */
-  .comp-cap { display: block; font-size: 0.6rem; color: #64748b; font-weight: 700; margin-bottom: 2px; letter-spacing: 0.2px; }
+  .comp-cap { display: none; font-size: 0.6rem; color: #64748b; font-weight: 700; margin-bottom: 2px; letter-spacing: 0.2px; }
+  .comp-cap.cap-diff { display: block; }
   .comp-note {
     display: block; width: 100%; margin-top: 4px;
     border: 1px solid #e2e8f0; border-radius: 6px;
@@ -195,6 +199,7 @@
   .legend span { display: inline-flex; align-items: center; gap: 4px; }
   .legend i { width: 12px; height: 12px; border-radius: 4px; display: inline-block; }
 
+  /* ── 手機版：卡片式排版（每台車一張卡，元件 2 欄網格）── */
   @media (max-width: 720px) {
     body { padding-bottom: 120px; }
     header { padding: 12px 14px; gap: 10px; }
@@ -206,8 +211,30 @@
     .conn-banner { padding: 10px 12px; }
     .filter-bar { padding: 12px 12px 0; }
     .search-box { width: 100%; font-size: 16px; }
-    .table-wrap { padding: 12px; overflow-x: auto; }
-    table { min-width: 640px; }
+    .table-wrap { padding: 12px; }
+    table { display: block; background: transparent; box-shadow: none; border-radius: 0; }
+    thead { display: none; }
+    tbody { display: block; }
+    tbody tr {
+      background: white; border: 1px solid #e2e8f0; border-radius: 12px;
+      margin-bottom: 12px; padding: 10px 12px;
+      display: grid; grid-template-columns: 1fr 1fr; gap: 8px;
+      box-shadow: 0 1px 4px rgba(0,0,0,0.06);
+    }
+    tbody td { display: block; padding: 2px; }
+    .td-no { display: none; }
+    .td-car { grid-column: 1 / -1; font-size: 1.05rem; padding: 0 0 2px; }
+    .td-comp { text-align: left; }
+    .comp-cap { display: block; }
+    .comp-pill { width: 100%; padding: 8px 10px; font-size: 0.8rem; }
+    .comp-note { font-size: 16px; padding: 6px 8px; }
+    .td-pct { text-align: left; padding: 2px; }
+    .td-pct::before { content: "Progress"; display: block; font-size: 0.6rem; color: #64748b; font-weight: 700; margin-bottom: 2px; letter-spacing: 0.2px; }
+    .td-person::before { content: "Completed by"; display: block; font-size: 0.6rem; color: #64748b; font-weight: 700; margin-bottom: 2px; letter-spacing: 0.2px; }
+    .person-select { width: 100%; font-size: 16px; padding: 8px; }
+    .quick-cell { grid-column: 1 / -1; text-align: center; }
+    .alldone-btn { width: 100%; padding: 10px; font-size: 0.85rem; }
+    .save-bar { padding: 10px 12px; gap: 10px; }
   }
 </style>
 </head>
@@ -221,6 +248,7 @@
   </div>
   <div class="badge" id="headerDate">Loading…</div>
   <button class="export-btn" onclick="exportBackup()" title="Download this unit's data as JSON">📥 Backup</button>
+  <button class="export-btn" onclick="exportCSV()" title="Download this unit's progress as CSV (opens in Excel)">📊 CSV</button>
 </header>
 
 <nav class="unit-tabs">
@@ -332,6 +360,7 @@ const NAMES = ["Mark","Tim","Jean","Emma"];
 // state[car] = { DC_SVR:"pending", ... , _dirty:bool }
 const state = {};
 const savedCloud = {};
+const cloudMeta = {};   // cloudMeta[car] = { at, by } 每台車最後儲存時間/人（CSV 用）
 // state[car] = { <comp>:"pending", <comp>_note:"", ... , person:"", _dirty:bool }
 cars.forEach(car => {
   const rec = { person: "" };
@@ -347,7 +376,9 @@ function pad(n) { return String(n).padStart(2,"0"); }
 function renderHead() {
   document.getElementById("headRow").innerHTML =
     `<th style="width:36px;text-align:center;">#</th><th style="width:90px;">Car No.</th>` +
-    COMPONENTS.map(c => `<th class="comp-col">${escH(c.label)}</th>`).join("") +
+    COMPONENTS.map(c =>
+      `<th class="comp-col">${escH(c.label)}<span class="th-stat" id="thstat_${c.key}">0/${TOTAL}</span></th>`
+    ).join("") +
     `<th class="comp-col" style="width:70px;">%</th>` +
     `<th class="comp-col" style="width:110px;">Completed by</th>` +
     `<th class="comp-col" style="width:120px;">Set All</th>`;
@@ -366,21 +397,24 @@ function renderAll() {
 
 function cellsHtml(car) {
   const rec = state[car];
+  // 雲端載入完成前鎖定編輯，避免使用者基於「全 Pending」的畫面標記後把雲端進度蓋掉
+  const locked = !firstLoadDone;
+  const dis = locked ? " disabled" : "";
   const pills = COMPONENTS.map(c => {
     const st = rec[c.key] || "pending";
     const m = STATUS_META[st];
     // 註記僅在「非 Done」時顯示（用途是說明未完成原因）
     const noteHtml = st !== "done"
       ? `<input class="comp-note" type="text" value="${escH(rec[c.key + "_note"] || "")}"
-                placeholder="note / reason…"
+                placeholder="note / reason…"${dis}
                 oninput="updateNote('${car}','${c.key}',this.value)">`
       : "";
-    // 元件名稱依車型不同時（如 NMS 的伺服器），在 pill 上方顯示小字實際名稱
+    // 每格都帶元件名稱小標：桌面只在名稱與表頭不同時顯示（如 NMS 伺服器），手機卡片一律顯示
     const lbl = compLabel(c, car);
-    const capHtml = lbl !== c.label ? `<span class="comp-cap">${escH(lbl)}</span>` : "";
+    const capHtml = `<span class="comp-cap${lbl !== c.label ? " cap-diff" : ""}">${escH(lbl)}</span>`;
     return `<td class="td-comp">
       ${capHtml}
-      <span class="comp-pill ${m.cls}" onclick="cycleComp('${car}','${c.key}')" title="${escH(lbl)}">${m.label}</span>
+      <span class="comp-pill ${m.cls}${locked ? " locked" : ""}" onclick="cycleComp('${car}','${c.key}')" title="${escH(lbl)}">${m.label}</span>
       ${noteHtml}
     </td>`;
   }).join("");
@@ -390,8 +424,8 @@ function cellsHtml(car) {
   const person = rec.person || "";
   const personOpts = `<option value="">— name —</option>` +
     NAMES.map(n => `<option value="${escH(n)}"${person === n ? " selected" : ""}>${escH(n)}</option>`).join("");
-  const personCell = `<td class="td-comp"><select class="person-select${person ? " has-val" : ""}" onchange="setPerson('${car}',this.value)">${personOpts}</select></td>`;
-  const quick = `<td class="quick-cell"><button class="alldone-btn" onclick="setAllDone('${car}')">✓ All Done</button></td>`;
+  const personCell = `<td class="td-comp td-person"><select class="person-select${person ? " has-val" : ""}"${dis} onchange="setPerson('${car}',this.value)">${personOpts}</select></td>`;
+  const quick = `<td class="quick-cell"><button class="alldone-btn"${dis} onclick="setAllDone('${car}')">✓ All Done</button></td>`;
   return pills + `<td class="td-pct" style="color:${pctColor}">${pct}%</td>` + personCell + quick;
 }
 
@@ -430,6 +464,14 @@ function updateStats() {
   document.getElementById("statNotStarted").textContent = ns;
   document.getElementById("statProgress").textContent = pr;
   document.getElementById("statDone").textContent = dn;
+  // 表頭每個元件的完成統計（找出瓶頸元件）
+  COMPONENTS.forEach(c => {
+    const el = document.getElementById("thstat_" + c.key);
+    if (!el) return;
+    const d = cars.filter(car => state[car][c.key] === "done").length;
+    el.textContent = `${d}/${TOTAL}`;
+    el.style.color = d === TOTAL ? "#4ade80" : "";
+  });
   const rate = Math.round((doneComp / totalComp) * 100);
   document.getElementById("progressFill").style.width = rate + "%";
   document.getElementById("progressLabel").textContent =
@@ -460,37 +502,55 @@ function applyFilter() {
 }
 
 // ── Actions ──
+// _dirty 改為「逐欄位」追蹤：{ 欄位名: true }。儲存時只寫入有改動的欄位，
+// 兩人同時編輯同一台車的不同欄位時不會互相覆蓋。
+function markDirty(car, field) {
+  if (!state[car]._dirty) state[car]._dirty = {};
+  state[car]._dirty[field] = true;
+}
+// 雲端載入完成前禁止編輯（防止把雲端進度蓋回 Pending）
+function editLocked() {
+  if (firstLoadDone) return false;
+  alert("Cloud data is still loading — please wait a moment.\n雲端資料載入中，請稍候再編輯。");
+  return true;
+}
+
 function cycleComp(car, key) {
+  if (editLocked()) return;
   const cur = state[car][key] || "pending";
   const next = STATUS_CYCLE[(STATUS_CYCLE.indexOf(cur) + 1) % STATUS_CYCLE.length];
   state[car][key] = next;
-  state[car]._dirty = true;
+  markDirty(car, key);
   rerenderRow(car);
   updateStats();
   updateSaveBar();
 }
 function setAllDone(car) {
-  COMPONENTS.forEach(c => state[car][c.key] = "done");
-  state[car]._dirty = true;
+  if (editLocked()) return;
+  COMPONENTS.forEach(c => { state[car][c.key] = "done"; markDirty(car, c.key); });
   rerenderRow(car);
   updateStats();
   updateSaveBar();
 }
 // 註記編輯：不重繪整列以保留輸入焦點（狀態/統計不受註記影響）
 function updateNote(car, key, val) {
+  if (!firstLoadDone) return;
   state[car][key + "_note"] = val;
-  state[car]._dirty = true;
+  markDirty(car, key + "_note");
   updateSaveBar();
 }
 function setPerson(car, val) {
+  if (editLocked()) return;
   state[car].person = val;
-  state[car]._dirty = true;
+  markDirty(car, "person");
   rerenderRow(car);
   updateSaveBar();
 }
 
 // ── Save bar ──
-function countPending() { return cars.filter(car => state[car]._dirty).length; }
+function countPending() {
+  return cars.filter(car => state[car]._dirty && Object.keys(state[car]._dirty).length > 0).length;
+}
 function updateSaveBar() {
   const count = countPending();
   document.getElementById("saveBarText").innerHTML = `📝 You have <strong>${count}</strong> unsaved car(s)`;
@@ -542,23 +602,26 @@ function commitChanges() {
   const now = new Date().toISOString();
   const changed = [];
   cars.forEach(car => {
-    if (!state[car]._dirty) return;
+    const dirty = state[car]._dirty;
+    if (!dirty || !Object.keys(dirty).length) return;
     changed.push(car);
-    const data = { updatedAt: now, updatedBy: editor, person: state[car].person || "" };
-    COMPONENTS.forEach(c => {
-      data[c.key] = state[car][c.key] || "pending";
-      // Done 的元件不需保留未完成原因，一併清空
-      data[c.key + "_note"] = state[car][c.key] === "done" ? "" : (state[car][c.key + "_note"] || "");
-    });
-    batch.set(db.collection(COLLECTION).doc(car), data, { merge: true });
+    batch.set(db.collection(COLLECTION).doc(car), buildCarPayload(car, editor, now), { merge: true });
   });
   batch.commit().then(() => {
     changed.forEach(car => {
+      const dirty = state[car]._dirty || {};
+      // Done 的元件註記一併清空（與寫入雲端的內容一致）
+      COMPONENTS.forEach(c => { if (dirty[c.key] && state[car][c.key] === "done") state[car][c.key + "_note"] = ""; });
+      // 只把「實際寫入的欄位」合併進 savedCloud，其餘保持雲端原值
+      if (!savedCloud[car]) {
+        const base = { person: "" };
+        COMPONENTS.forEach(c => { base[c.key] = "pending"; base[c.key + "_note"] = ""; });
+        savedCloud[car] = base;
+      }
+      Object.keys(dirty).forEach(k => savedCloud[car][k] = state[car][k]);
+      COMPONENTS.forEach(c => { if (dirty[c.key] && state[car][c.key] === "done") savedCloud[car][c.key + "_note"] = ""; });
       delete state[car]._dirty;
-      COMPONENTS.forEach(c => { if (state[car][c.key] === "done") state[car][c.key + "_note"] = ""; });
-      savedCloud[car] = {};
-      COMPONENTS.forEach(c => { savedCloud[car][c.key] = state[car][c.key]; savedCloud[car][c.key + "_note"] = state[car][c.key + "_note"] || ""; });
-      savedCloud[car].person = state[car].person || "";
+      rerenderRow(car);
     });
     document.getElementById("saveBarText").innerHTML = "✅ Saved &amp; synced!";
     setTimeout(() => { if (countPending() === 0) document.getElementById("saveBar").style.display = "none"; else updateSaveBar(); }, 1800);
@@ -566,6 +629,24 @@ function commitChanges() {
     document.getElementById("saveBarText").innerHTML = "❌ Save failed, please retry";
     console.warn("commit failed", err);
   });
+}
+
+// 只寫入有改動的欄位（逐欄位 merge，避免多人互相覆蓋）；狀態改為 done 時一併清空該欄註記
+function buildCarPayload(car, editor, now) {
+  const dirty = state[car]._dirty || {};
+  const data = { updatedAt: now, updatedBy: editor };
+  COMPONENTS.forEach(c => {
+    const nk = c.key + "_note";
+    if (dirty[c.key]) {
+      data[c.key] = state[car][c.key] || "pending";
+      if (state[car][c.key] === "done") data[nk] = "";
+    }
+    if (dirty[nk] && !(nk in data)) {
+      data[nk] = state[car][c.key] === "done" ? "" : (state[car][nk] || "");
+    }
+  });
+  if (dirty.person) data.person = state[car].person || "";
+  return data;
 }
 
 // ── Backup ──
@@ -577,6 +658,49 @@ function exportBackup() {
   const now = new Date();
   const name = `domainProgress_${UNIT_ID}_${now.getFullYear()}-${pad(now.getMonth()+1)}-${pad(now.getDate())}_${pad(now.getHours())}${pad(now.getMinutes())}.json`;
   const blob = new Blob([JSON.stringify(out, null, 2)], { type: "application/json" });
+  const a = document.createElement("a"); a.href = URL.createObjectURL(blob); a.download = name;
+  document.body.appendChild(a); a.click(); a.remove();
+  setTimeout(() => URL.revokeObjectURL(a.href), 10000);
+}
+
+// ── CSV export（已儲存的雲端資料；Excel 可直接開啟）──
+function exportCSV() {
+  if (countPending() > 0 &&
+      !confirm("You have unsaved changes. The CSV contains SAVED data only. Continue?")) return;
+  const q = v => `"${String(v == null ? "" : v).replace(/"/g, '""')}"`;
+  const STATUS_TEXT = { pending: "Pending", progress: "In Progress", done: "Done" };
+  const header = ["Car No."];
+  COMPONENTS.forEach(c => { header.push(c.label); header.push(c.label + " Note"); });
+  header.push("Progress %", "Completed by", "Last Updated", "Updated by");
+  const lines = [header.map(q).join(",")];
+  cars.forEach(car => {
+    const rec = savedCloud[car];
+    const row = [car];
+    let doneN = 0;
+    COMPONENTS.forEach(c => {
+      const st = rec ? (rec[c.key] || "pending") : "pending";
+      if (st === "done") doneN++;
+      // NMS 車元件名稱不同時以括號標示
+      const lbl = compLabel(c, car);
+      const stText = STATUS_TEXT[st] || st;
+      row.push(lbl !== c.label ? `${stText} (${lbl})` : stText);
+      row.push(rec ? (rec[c.key + "_note"] || "") : "");
+    });
+    row.push(Math.round((doneN / COMPONENTS.length) * 100) + "%");
+    row.push(rec ? (rec.person || "") : "");
+    const meta = cloudMeta[car] || {};
+    let atText = "";
+    if (meta.at) {
+      const d = new Date(meta.at);
+      if (!isNaN(d.getTime())) atText = `${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())} ${pad(d.getHours())}:${pad(d.getMinutes())}`;
+    }
+    row.push(atText, meta.by || "");
+    lines.push(row.map(q).join(","));
+  });
+  // BOM 讓 Excel 正確以 UTF-8 開啟中文
+  const blob = new Blob(["﻿" + lines.join("\r\n")], { type: "text/csv;charset=utf-8" });
+  const now = new Date();
+  const name = `domainProgress_${UNIT_ID}_${now.getFullYear()}-${pad(now.getMonth()+1)}-${pad(now.getDate())}_${pad(now.getHours())}${pad(now.getMinutes())}.csv`;
   const a = document.createElement("a"); a.href = URL.createObjectURL(blob); a.download = name;
   document.body.appendChild(a); a.click(); a.remove();
   setTimeout(() => URL.revokeObjectURL(a.href), 10000);
@@ -608,6 +732,20 @@ function updateFooterUpdated() {
 }
 
 window.addEventListener("beforeunload", e => { if (countPending() > 0) { e.preventDefault(); e.returnValue = ""; } });
+
+// 雲端同步時正在編輯的車延後重繪（焦點離開該列後補繪）
+const pendingRender = new Set();
+document.getElementById("tableBody").addEventListener("focusout", () => {
+  setTimeout(() => {
+    pendingRender.forEach(car => {
+      const row = document.getElementById(`row_${car}`);
+      if (row && !row.contains(document.activeElement)) {
+        pendingRender.delete(car);
+        rerenderRow(car);
+      }
+    });
+  }, 0);
+});
 
 // ── Init UI ──
 document.getElementById("unitSubtitle").innerHTML = `Unit: ${UNIT_ID} &nbsp;|&nbsp; Cars: ${TOTAL}`;
@@ -641,23 +779,32 @@ db.collection(COLLECTION).onSnapshot(snap => {
     changedCars.push(car);
     const data = change.type === "removed" ? {} : change.doc.data();
     if (data.updatedAt) trackLatestUpdated(data.updatedAt, data.updatedBy);
+    cloudMeta[car] = { at: data.updatedAt || "", by: data.updatedBy || "" };
     const cloud = { person: (typeof data.person === "string") ? data.person : "" };
     COMPONENTS.forEach(c => {
       cloud[c.key] = (typeof data[c.key] === "string") ? data[c.key] : "pending";
       cloud[c.key + "_note"] = (typeof data[c.key + "_note"] === "string") ? data[c.key + "_note"] : "";
     });
     savedCloud[car] = cloud;
-    // 保留本機未儲存的修改，否則採用雲端
-    if (!state[car]._dirty) {
-      COMPONENTS.forEach(c => { state[car][c.key] = cloud[c.key]; state[car][c.key + "_note"] = cloud[c.key + "_note"]; });
-      state[car].person = cloud.person;
-    }
+    // 逐欄位合併：本機沒改過的欄位採用雲端值，本機已改（dirty）的欄位保留本機版本
+    const dirty = state[car]._dirty || {};
+    Object.keys(cloud).forEach(k => { if (!dirty[k]) state[car][k] = cloud[k]; });
   });
-  // 正在編輯（dirty）的車不重繪，避免輸入註記時失焦
-  changedCars.forEach(car => { if (!state[car]._dirty) rerenderRow(car); });
+  if (!firstLoadDone) {
+    // 首次載入完成：解鎖編輯，全表重繪
+    firstLoadDone = true;
+    hideConnBanner();
+    cars.forEach(car => rerenderRow(car));
+  } else {
+    // 正在輸入的車延後重繪，避免打字失焦
+    changedCars.forEach(car => {
+      const row = document.getElementById(`row_${car}`);
+      if (row && row.contains(document.activeElement)) pendingRender.add(car);
+      else rerenderRow(car);
+    });
+  }
   updateStats();
   updateFooterUpdated();
-  if (!firstLoadDone) { firstLoadDone = true; hideConnBanner(); }
 }, err => { console.warn("snapshot error", err); showConnError(); });
 </script>
 </body>
