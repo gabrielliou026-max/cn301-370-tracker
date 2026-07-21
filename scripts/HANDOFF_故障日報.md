@@ -272,6 +272,14 @@ python3 gen_word_report.py
 `updateSaveBar()` 原版依賴 `#saveBarCount` id，innerHTML 重寫後 id 消失導致
 第二次呼叫起全部拋錯 → 儲存後無法輸入下一筆。**改此函式時勿走回頭路。**
 
+### 2026-07-18 資料防護強化
+- **逐項寫入**：`commitChanges()` 只寫入 `_new`/`_dirty` 的故障項目（未改動的項目不送、
+  靠 `merge:true` 保留雲端版本）。**勿改回「整車全部項目重寫」**，否則多人同時編輯
+  同一台車的不同項目會互相覆蓋。
+- **載入完成前不顯示「均完成」快速鍵**（`isUnchecked` 加 `firstLoadDone` 條件）：
+  避免對「雲端其實有故障、只是還沒載入」的車誤按而建立假的均完成紀錄。
+- **備份含每車 `updatedAt`/`updatedBy`**（`cloudMeta` 於快照記錄）。
+
 ---
 
 ## 10. Git 資訊

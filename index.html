@@ -445,6 +445,7 @@ function makeId() { return "f" + Date.now().toString(36) + Math.random().toStrin
 // _default: 虛擬預設項目（未改動不計入待存數量，不寫入雲端）
 const faultList = {};
 const savedCloud = {}; // 記錄雲端已儲存的資料，供 discard 使用
+const cloudMeta = {};  // cloudMeta[car] = { at, by } 每台車最後儲存時間/人（備份用）
 cars.forEach(car => {
   faultList[car] = [{ id: makeId(), status: "待確認", desc: "", person: "", witness: "", _default: true }];
   savedCloud[car] = null;
@@ -526,7 +527,9 @@ function renderCarCell(car) {
   }).join("");
 
   // 尚未檢查的車顯示「均完成」快速鍵，一鍵完成清點
-  const isUnchecked = active.length === 1 && active[0]._default;
+  // 雲端載入完成前不顯示：此時每台車都是虛擬預設，誤按會對「其實有故障的車」
+  // 建立假的均完成紀錄（雲端載入後會與真實故障並存造成誤導）
+  const isUnchecked = firstLoadDone && active.length === 1 && active[0]._default;
   const allClearBtn = isUnchecked
     ? `<button class="allclear-btn" onclick="markAllClear('${car}')" title="此車無故障，一鍵標記">✓ 均完成 All Clear</button>`
     : "";
@@ -844,7 +847,9 @@ function commitChanges() {
     carsChanged.add(car);
     const ref = db.collection("faultData").doc(car);
     const data = { updatedAt: now, updatedBy: editor };
-    faultList[car].filter(f => !f._del && !f._default).forEach(f => {
+    // 只寫入「有改動」的項目（_new 或 _dirty）；未改動的項目不送，
+    // 靠 merge:true 保留雲端版本，避免蓋掉別人同時修改的其他項目
+    faultList[car].filter(f => !f._del && !f._default && (f._new || f._dirty)).forEach(f => {
       data[f.id] = { status: f.status, desc: f.desc, person: f.person || "", witness: f.witness || "" };
     });
     faultList[car].filter(f => f._del && !f._new).forEach(f => {
@@ -887,7 +892,8 @@ function exportBackup() {
   let count = 0;
   cars.forEach(car => {
     if (savedCloud[car] && savedCloud[car].length > 0) {
-      out[car] = {};
+      const meta = cloudMeta[car] || {};
+      out[car] = { updatedAt: meta.at || "", updatedBy: meta.by || "" };
       savedCloud[car].forEach(f => {
         out[car][f.id] = { status: f.status, desc: f.desc, person: f.person || "", witness: f.witness || "" };
         count++;
@@ -1026,6 +1032,8 @@ db.collection("faultData").onSnapshot(snap => {
     changedCars.push(car);
     const data = change.type === "removed" ? {} : change.doc.data();
     if (data.updatedAt) trackLatestUpdated(data.updatedAt, data.updatedBy);
+    if (change.type === "removed") delete cloudMeta[car];
+    else cloudMeta[car] = { at: data.updatedAt || "", by: data.updatedBy || "" };
 
     // 從雲端擷取真實故障項目（updatedAt / updatedBy 為文件層級欄位，需略過）
     const cloudItems = [];
