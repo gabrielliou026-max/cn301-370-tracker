@@ -1,0 +1,429 @@
+<!doctype html>
+<html lang="zh-Hant">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover">
+<meta name="theme-color" content="#0f3f82">
+<title>RF 現地工具箱</title>
+<style>
+:root{--navy:#0b2d5c;--blue:#0d56b3;--blue2:#1677d2;--teal:#0e9696;--green:#1b9a49;--lime:#77bf3f;--amber:#f4b400;--orange:#eb751a;--red:#df2d24;--violet:#6c4fd3;--ink:#15233b;--muted:#60708a;--bg:#edf4fb;--card:#fff;--line:#cbd9eb;--soft:#f6f9fd}
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent}html{scroll-behavior:smooth;-webkit-text-size-adjust:100%}button,input,select{touch-action:manipulation}body{margin:0;font-family:-apple-system,BlinkMacSystemFont,"Noto Sans TC","Microsoft JhengHei",Segoe UI,sans-serif;background:linear-gradient(#eef5fc,#f8fbfe);color:var(--ink);line-height:1.45}
+.app{max-width:860px;margin:auto;padding:10px 10px 92px}.hero{background:#fff;border:1px solid var(--line);border-radius:24px;padding:18px 14px;box-shadow:0 10px 28px #0d3d7a14;text-align:center}.hero-row{display:grid;grid-template-columns:72px 1fr 72px;align-items:center;gap:8px}.hero h1{margin:0;color:var(--navy);font-size:clamp(29px,7vw,52px);letter-spacing:.03em}.hero p{margin:5px 0 0;color:var(--blue);font-weight:800;font-size:clamp(14px,3.4vw,21px)}.big-icon{font-size:48px}.unit-grid{display:grid;grid-template-columns:repeat(6,1fr);gap:10px;margin-top:16px}.unit-card{border:1px solid var(--line);border-radius:18px;padding:12px 7px;background:#fff;min-height:130px}.unit-card b{display:block;font-size:28px}.unit-card span{font-size:13px}.u1 b{color:var(--blue)}.u2 b{color:var(--orange)}.u3 b{color:var(--green)}.u4 b{color:var(--violet)}.u5 b{color:var(--teal)}
+.section{background:#fff;border:1px solid var(--line);border-radius:22px;margin-top:14px;padding:13px;box-shadow:0 8px 24px #0d3d7a0d}.section-title{display:inline-flex;align-items:center;gap:9px;background:linear-gradient(90deg,var(--blue),#02429c);color:#fff;border-radius:12px 12px 12px 4px;padding:9px 16px;font-weight:900;font-size:20px;margin:-2px 0 12px}.calc-grid{display:grid;grid-template-columns:1fr 1fr;gap:14px}.panel{border:1px solid var(--line);border-radius:17px;overflow:hidden;background:var(--soft)}.panel h3{margin:0;padding:10px 12px;background:linear-gradient(90deg,var(--blue),var(--blue2));color:#fff;font-size:18px}.panel.teal h3{background:linear-gradient(90deg,#0c7d7d,var(--teal))}.panel-body{padding:12px}.field{display:grid;grid-template-columns:1fr auto;gap:8px;align-items:end}.field label{display:block;font-size:13px;font-weight:800;color:var(--muted);margin-bottom:4px}input[type="number"],input[type="text"],select{width:100%;min-height:50px;font-size:20px;padding:12px;border:1px solid #adc2db;border-radius:12px;background:#fff;color:var(--ink);-webkit-appearance:none;appearance:none}.field input,.field select{width:100%}.btn{border:0;border-radius:12px;min-height:50px;padding:12px 16px;background:var(--blue);color:#fff;font-size:16px;font-weight:900;cursor:pointer;box-shadow:0 4px 10px #0d56b333}.btn.teal{background:var(--teal)}.result{margin-top:10px;background:#fff;border:1px solid #bcd1e8;border-radius:12px;padding:11px;font-size:15px}.result strong{font-size:23px;color:var(--blue)}.formula{margin-top:10px;background:#eaf3ff;border-radius:10px;padding:9px;text-align:center;font-family:ui-monospace,Consolas,monospace;font-size:14px}.quick-table{width:100%;border-collapse:collapse;margin-top:8px}.quick-table td{padding:6px;border-bottom:1px dashed #cfdae8}.quick-table td:first-child{font-weight:900}
+.rules{display:grid;grid-template-columns:1.25fr repeat(4,1fr);gap:0;background:#fffaf0;border:1px solid #f1cf8f;border-radius:18px;margin-top:14px;overflow:hidden}.rules>div{padding:14px 8px;text-align:center;border-right:1px solid #ead7ae}.rules>div:last-child{border-right:0}.rules strong{font-size:22px}.up{color:var(--orange)}.down{color:var(--blue)}
+.metric{border:1px solid var(--line);border-radius:15px;padding:12px;margin-top:10px;background:#fff}.metric-head{display:flex;justify-content:space-between;gap:10px;align-items:center}.metric-head b{font-size:18px;color:var(--blue)}.metric-head small{color:var(--muted)}.scale{display:grid;grid-template-columns:repeat(6,1fr);margin-top:8px;overflow:hidden;border-radius:999px}.scale span{padding:9px 3px;text-align:center;font-weight:900;color:white;font-size:14px}.g1{background:#219746}.g2{background:#76bd3c}.y{background:#efb114}.o{background:#ed7818}.r{background:#df3328}.arrow-note{text-align:center;font-size:13px;color:var(--muted);margin-top:6px}.noise-scale{grid-template-columns:repeat(3,1fr)}.threshold{display:grid;grid-template-columns:1fr auto 1fr auto 1fr;align-items:center;gap:8px;text-align:center;margin-top:10px}.threshold .box{border:1px solid var(--line);border-radius:12px;padding:10px;font-weight:900}.threshold .ok{background:#e9f7ed;color:#137a36}.threshold .gate{border-top:3px dashed var(--red);color:var(--red);padding-top:7px}.threshold .snrbox{color:var(--orange)}
+.link-diagram{display:grid;grid-template-columns:1fr auto 1fr;align-items:center;gap:10px;margin-top:8px}.station{border:1px solid var(--line);border-radius:15px;padding:13px;text-align:center;background:#f7fbff}.station .radio{font-size:44px}.beam{position:relative;min-height:110px;display:flex;align-items:center;justify-content:center}.beam:before{content:"";height:8px;width:160px;background:linear-gradient(90deg,#41a3ff,#7358dd);clip-path:polygon(0 35%,88% 35%,88% 0,100% 50%,88% 100%,88% 65%,0 65%);opacity:.9}.loss-icons{position:absolute;bottom:2px;font-size:21px;white-space:nowrap}.flow-grid{display:grid;grid-template-columns:repeat(9,1fr);gap:7px;margin-top:10px}.flow-item{border:1px solid var(--line);border-radius:11px;padding:8px 4px;text-align:center;background:#fff;font-size:11px;font-weight:800}.flow-item i{font-style:normal;font-size:26px;display:block}.examples{display:grid;grid-template-columns:1fr 1fr;gap:12px}.equation{display:grid;grid-template-columns:1fr auto 1fr auto 1fr auto 1fr;align-items:center;gap:6px;text-align:center}.eqbox{border:1px solid var(--line);border-radius:10px;padding:10px 5px;background:#fff;font-weight:800}.eqbox b{font-size:18px;color:var(--blue)}
+.small{font-size:12px;color:var(--muted)}.tip{margin-top:12px;background:#edf5ff;border-radius:12px;padding:10px;text-align:center;font-weight:800;color:var(--navy)}
+.bottom-nav{position:fixed;bottom:0;left:50%;transform:translateX(-50%);width:min(860px,100%);display:grid;grid-template-columns:repeat(6,1fr);background:#fff;border-top:1px solid var(--line);z-index:20;padding-bottom:env(safe-area-inset-bottom)}.bottom-nav button{border:0;background:#fff;min-height:58px;padding:9px 2px 7px;color:var(--muted);font-weight:800;font-size:14px;touch-action:manipulation}.bottom-nav button.active{color:var(--blue);background:#edf5ff}.page{display:none}.page.active{display:block}
+@media(max-width:700px){.unit-grid{grid-template-columns:repeat(2,1fr)}.unit-card:last-child{grid-column:span 2}.calc-grid,.examples{grid-template-columns:1fr}.rules{grid-template-columns:1fr 1fr}.rules>div{border-bottom:1px solid #ead7ae}.rules>div:first-child{grid-column:span 2}.link-diagram{grid-template-columns:1fr}.beam{min-height:75px;transform:rotate(90deg)}.loss-icons{transform:rotate(-90deg)}.flow-grid{grid-template-columns:repeat(3,1fr)}.equation{grid-template-columns:1fr auto 1fr;}.equation .eq4,.equation .op3{grid-column:auto}.hero-row{grid-template-columns:48px 1fr 48px}.big-icon{font-size:36px}.section-title{font-size:18px}}
+
+    .spectrum-wrap{position:relative;background:#071426;border-radius:16px;padding:10px;overflow:hidden}
+    #spectrumCanvas{width:100%;height:280px;display:block;border-radius:10px;background:linear-gradient(#06111f,#0b2038)}
+    .legend{display:flex;flex-wrap:wrap;gap:10px;margin-top:8px;font-size:12px;color:#d7e6f8}
+    .legend span::before{content:"";display:inline-block;width:16px;height:3px;margin-right:5px;vertical-align:middle;border-radius:3px;background:currentColor}
+    .legend .min{color:#4fc3f7}.legend .max{color:#ff8a65}.legend .hold{color:#ffd54f}.legend .oper{color:#66bb6a}
+    .analysis-card{margin-top:12px;border:1px solid var(--line);border-radius:15px;padding:12px;background:#fff}
+    .analysis-title{display:flex;align-items:center;justify-content:space-between;gap:10px}
+    .analysis-title b{font-size:18px;color:var(--navy)}
+    .badge{padding:5px 9px;border-radius:999px;font-size:12px;font-weight:900}
+    .badge.good{background:#e8f7ed;color:#167a39}.badge.warn{background:#fff4dc;color:#966200}.badge.bad{background:#fdebea;color:#a5221b}
+    .kv{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-top:10px}
+    .kv div{border:1px solid var(--line);border-radius:12px;padding:10px;text-align:center;background:var(--soft)}
+    .kv small{display:block;color:var(--muted);font-weight:800}.kv strong{display:block;font-size:20px;color:var(--blue);margin-top:3px}
+    .sweep-note{margin-top:10px;padding:10px;border-radius:12px;background:#eef5ff;color:var(--navy);font-weight:800}
+    .range-row{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+    @media(max-width:700px){.range-row,.kv{grid-template-columns:1fr}.spectrum-wrap{padding:8px}#spectrumCanvas{height:240px}}
+
+</style>
+</head>
+<body><noscript><div style="padding:14px;background:#fff3cd;color:#664d03;font-weight:800">此瀏覽器預覽未啟用 JavaScript。請將檔案下載後改用 Safari 或 Chrome 開啟。</div></noscript>
+<div class="app">
+<section id="home" class="page active">
+<div class="hero">
+  <div class="hero-row"><div class="big-icon">📡</div><div><h1>RF 現地工具箱</h1><p>現地快速換算、判讀與速查</p></div><div class="big-icon">🧮</div></div>
+  <div class="unit-grid">
+    <div class="unit-card u1"><b>dB</b><div class="big-icon">📊</div><span>比較兩個功率或電壓的比值</span></div>
+    <div class="unit-card u2"><b>dBm</b><div class="big-icon">⚡</div><span>以 1 mW 為基準的絕對功率</span></div>
+    <div class="unit-card u3"><b>dBi</b><div class="big-icon">📶</div><span>相對等向性天線的方向增益</span></div>
+    <div class="unit-card u4"><b>dBW</b><div class="big-icon">〰️</div><span>以 1 W 為基準的絕對功率</span></div>
+    <div class="unit-card u5"><b>dBμV</b><div class="big-icon">〰</div><span>以 1 μV 為基準的電壓單位</span></div>
+  </div>
+</div>
+<div class="tip" style="margin:12px 0 0">📱 iPhone：請下載檔案後，用 Safari 開啟；ChatGPT 內建預覽可能不執行計算程式。</div>
+
+<div class="section">
+<div class="section-title">🧮 換算計算器</div>
+<div class="calc-grid">
+  <div class="panel"><h3>① dBm ↔ W / mW</h3><div class="panel-body">
+    <div class="field"><div><label>輸入 dBm</label><input id="dbmIn" type="number" inputmode="decimal" value="30" step="any"></div><button class="btn" onclick="calcDbm()">換算</button></div>
+    <div id="dbmResult" class="result"></div>
+    <div class="formula">P(mW) = 10<sup>dBm/10</sup></div>
+    <table class="quick-table"><tr><td>30 dBm</td><td>1 W</td></tr><tr><td>20 dBm</td><td>100 mW</td></tr><tr><td>10 dBm</td><td>10 mW</td></tr><tr><td>0 dBm</td><td>1 mW</td></tr><tr><td>-30 dBm</td><td>1 μW</td></tr></table>
+  </div></div>
+  <div class="panel teal"><h3>② W / mW ↔ dBm</h3><div class="panel-body">
+    <div class="field"><div><label>輸入功率</label><input id="powerIn" type="number" inputmode="decimal" value="1" step="any"></div><select id="powerUnit"><option value="W">W</option><option value="mW">mW</option><option value="uW">μW</option></select></div>
+    <button class="btn teal" style="width:100%;margin-top:8px" onclick="calcPower()">換算成 dBm</button>
+    <div id="powerResult" class="result"></div>
+    <div class="formula">dBm = 10 log₁₀(P / 1 mW)</div>
+    <div class="tip">dBW = dBm − 30</div>
+  </div></div>
+</div>
+<div class="rules"><div>💡 <b>常用口訣</b></div><div><strong class="up">+3 dB</strong><br>約功率 ×2</div><div><strong class="down">−3 dB</strong><br>約功率 ÷2</div><div><strong class="up">+10 dB</strong><br>功率 ×10</div><div><strong class="down">−10 dB</strong><br>功率 ÷10</div></div>
+</div>
+
+<div class="section">
+<div class="section-title">🔎 現地判讀速查</div>
+<div class="metric"><div class="metric-head"><b>RSSI (dBm)</b><small>越接近 0 越好</small></div><div class="scale"><span class="g1">−50<br>很好</span><span class="g2">−60<br>可用</span><span class="y">−70<br>邊緣</span><span class="o">−80<br>差</span><span class="r">−90<br>危險</span></div><div class="arrow-note">⬅ 強　　　　　　　　　　　　　　　　　弱 ➡</div></div>
+<div class="metric"><div class="metric-head"><b>SNR (dB)</b><small>越高越好</small></div><div class="scale" style="grid-template-columns:repeat(4,1fr)"><span class="g1">&gt;30<br>優</span><span class="g2">20–30<br>良</span><span class="y">10–20<br>邊緣</span><span class="r">&lt;10<br>不良</span></div></div>
+<div class="metric"><div class="metric-head"><b>Noise Floor (dBm)</b><small>越負越乾淨</small></div><div class="scale noise-scale"><span class="g1">−100<br>乾淨</span><span class="y">−90<br>普通</span><span class="r">−80<br>吵</span></div></div>
+<div class="metric"><div class="metric-head"><b>靈敏度門檻</b><small>同時滿足才可穩定接收</small></div><div class="threshold"><div class="box ok">RSSI</div><b>&gt;</b><div class="gate">Sensitivity</div><b>且</b><div class="box snrbox">SNR 足夠</div></div></div>
+</div>
+
+<div class="section"><div class="section-title">📐 功率預算範例</div><div class="equation"><div class="eqbox">發射功率<br><b>30 dBm</b></div><b>＋</b><div class="eqbox">天線增益<br><b>9 dBi</b></div><b>−</b><div class="eqbox">線損<br><b>2 dB</b></div><b>=</b><div class="eqbox eq4">EIRP<br><b>37 dBm</b></div></div><div class="tip">EIRP = 發射功率 + 天線增益 − 線損</div></div>
+</section>
+
+<section id="link" class="page">
+<div class="section"><div class="section-title">📡 無線電鏈路判讀圖</div>
+<div class="link-diagram"><div class="station"><b>A端 發射</b><div class="radio">📻</div><div>TX Power → Cable Loss → TX Antenna Gain</div></div><div class="beam"><div class="loss-icons">📏 ⛰️ 🌧️ ↕️</div></div><div class="station"><b>B端 接收</b><div class="radio">📻</div><div>RX Antenna Gain → RSSI → SNR → Throughput</div></div></div>
+<div class="flow-grid"><div class="flow-item"><i>⚡</i>TX Power</div><div class="flow-item"><i>📶</i>天線增益</div><div class="flow-item"><i>📡</i>EIRP</div><div class="flow-item"><i>⛰️</i>路徑損耗</div><div class="flow-item"><i>📊</i>RSSI</div><div class="flow-item"><i>〰️</i>Noise Floor</div><div class="flow-item"><i>〽️</i>SNR</div><div class="flow-item"><i>🛡️</i>Sensitivity</div><div class="flow-item"><i>⏱️</i>Throughput</div></div>
+<div class="tip">dBi 提高 RSSI，RSSI 提高 SNR，SNR 超過 Sensitivity，Throughput 才能提升。</div></div>
+<div class="section"><div class="section-title">🧪 範例計算</div><div class="examples"><div class="panel"><h3>計算 EIRP</h3><div class="panel-body"><div class="calc-grid"><div><label>TX Power</label><input id="tx" type="number" inputmode="decimal" value="30"></div><div><label>TX 線損</label><input id="txloss" type="number" inputmode="decimal" value="2"></div><div><label>TX 天線增益</label><input id="txgain" type="number" inputmode="decimal" value="9"></div></div><button class="btn" style="width:100%;margin-top:9px" onclick="calcLink()">計算鏈路</button><div id="linkResult" class="result"></div></div></div><div class="panel teal"><h3>計算 SNR</h3><div class="panel-body"><div class="calc-grid"><div><label>RSSI</label><input id="rssi" type="number" inputmode="decimal" value="-60"></div><div><label>Noise Floor</label><input id="noise" type="number" inputmode="decimal" value="-90"></div></div><button class="btn teal" style="width:100%;margin-top:9px" onclick="calcSnr()">計算 SNR</button><div id="snrResult" class="result"></div></div></div></div></div>
+</section>
+
+<section id="path" class="page">
+<div class="section">
+  <div class="section-title">🗺️ 路徑與鏈路預算</div>
+
+  <div class="panel">
+    <h3>① 菲涅耳區計算器</h3>
+    <div class="panel-body">
+      <div class="calc-grid">
+        <div><label>鏈路總距離</label><div class="field"><input id="frDist" type="text" inputmode="decimal" value="10"><select id="frDistUnit"><option value="km">km</option><option value="m">m</option></select></div></div>
+        <div><label>頻率</label><div class="field"><input id="frFreq" type="text" inputmode="decimal" value="2.4"><select id="frFreqUnit"><option value="GHz">GHz</option><option value="MHz">MHz</option></select></div></div>
+      </div>
+      <button id="frCalc" class="btn" style="width:100%;margin-top:10px">計算菲涅耳區</button>
+      <div id="frResult" class="result"></div>
+      <p class="small">以鏈路中點計算第一菲涅耳區最大半徑；一般至少保留 60% 淨空，較保守規劃可參考 80%。</p>
+    </div>
+  </div>
+
+  <div class="panel teal" style="margin-top:14px">
+    <h3>② 通信鏈路預算</h3>
+    <div class="panel-body">
+      <div class="calc-grid">
+        <div><label>頻率 (MHz)</label><input id="bFreq" type="text" inputmode="decimal" value="2400"></div>
+        <div><label>距離 (km)</label><input id="bDist" type="text" inputmode="decimal" value="10"></div>
+        <div><label>發射功率 (dBm)</label><input id="bTx" type="text" inputmode="decimal" value="30"></div>
+        <div><label>發射天線增益 (dBi)</label><input id="bTxGain" type="text" inputmode="decimal" value="9"></div>
+        <div><label>接收天線增益 (dBi)</label><input id="bRxGain" type="text" inputmode="decimal" value="9"></div>
+        <div><label>發射線損 (dB)</label><input id="bTxLoss" type="text" inputmode="decimal" value="2"></div>
+        <div><label>接收線損 (dB)</label><input id="bRxLoss" type="text" inputmode="decimal" value="2"></div>
+        <div><label>接收靈敏度 (dBm)</label><input id="bSens" type="text" inputmode="decimal" value="-90"></div>
+        <div><label>其他損耗 (dB)</label><input id="bOther" type="text" inputmode="decimal" value="0"></div>
+        <div><label>設計所需餘裕 (dB)</label><input id="bRequiredMargin" type="text" inputmode="decimal" value="15"></div>
+      </div>
+      <button id="budgetCalc" class="btn teal" style="width:100%;margin-top:10px">計算鏈路預算</button>
+      <div id="budgetResult" class="result"></div>
+      <p class="small">接收功率 = 發射功率 + 兩端天線增益 − 兩端線損 − FSPL − 其他損耗。</p>
+    </div>
+  </div>
+</div>
+</section>
+
+<section id="extra" class="page"><div class="section"><div class="section-title">🧰 其他換算</div><div class="calc-grid"><div><label>頻率 (MHz)</label><input id="waveFreq" type="number" inputmode="decimal" value="2400"></div><div><label>電壓 (μV)</label><input id="uv" type="number" inputmode="decimal" value="1"></div></div><button class="btn" style="width:100%;margin-top:10px" onclick="calcExtra()">計算波長與 dBμV</button><div id="extraResult" class="result"></div></div></section>
+
+  <section id="spectrum" class="page">
+    <div class="section">
+      <div class="section-title">📈 Frequency Sweep 判讀</div>
+
+      <div class="panel">
+        <h3>Min RSSI / Max RSSI / Max Hold</h3>
+        <div class="panel-body">
+          <div class="calc-grid">
+            <div><label>起始頻率 (MHz)</label><input id="spStart" type="text" inputmode="decimal" value="1350"></div>
+            <div><label>結束頻率 (MHz)</label><input id="spEnd" type="text" inputmode="decimal" value="2700"></div>
+            <div><label>Min RSSI (dBm)</label><input id="spMin" type="text" inputmode="decimal" value="-98"></div>
+            <div><label>Max RSSI (dBm)</label><input id="spMax" type="text" inputmode="decimal" value="-45"></div>
+            <div><label>Max Hold RSSI (dBm)</label><input id="spHold" type="text" inputmode="decimal" value="-32"></div>
+            <div><label>Noise Floor 參考值 (dBm)</label><input id="spNoise" type="text" inputmode="decimal" value="-96"></div>
+            <div><label>工作頻率中心 (MHz)</label><input id="spCenter" type="text" inputmode="decimal" value="2000"></div>
+            <div><label>工作頻寬 (MHz)</label><input id="spBw" type="text" inputmode="decimal" value="40"></div>
+          </div>
+          <button id="spAnalyze" class="btn" style="width:100%;margin-top:10px">重新繪製並判讀</button>
+
+          <div class="spectrum-wrap" style="margin-top:12px">
+            <canvas id="spectrumCanvas" width="900" height="300"></canvas>
+            <div class="legend">
+              <span class="min">Min RSSI</span>
+              <span class="max">Max RSSI</span>
+              <span class="hold">Max Hold</span>
+              <span class="oper">Operating Band</span>
+            </div>
+          </div>
+
+          <div id="spResult" class="analysis-card"></div>
+
+          <div class="analysis-card">
+            <div class="analysis-title"><b>如何判讀高低起伏</b></div>
+            <p><b>平坦且接近 Noise Floor：</b>背景穩定，該頻段通常較乾淨。</p>
+            <p><b>單一尖峰：</b>特定頻率存在窄頻訊號或偶發發射源。</p>
+            <p><b>寬而高的平台：</b>可能是寬頻訊號、鄰頻洩漏，或整體雜訊底升高。</p>
+            <p><b>Max Hold 很高、但 Max RSSI 當下較低：</b>代表先前曾出現短暫或間歇性發射。</p>
+            <p><b>整段頻譜都偏高：</b>可能是環境寬頻雜訊、量測前端過載，或附近存在強訊號源。</p>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+<section id="check" class="page"><div class="section"><div class="section-title">✅ 現地開設清單</div><div id="checks"></div></div></section>
+</div>
+<nav class="bottom-nav"><button class="active" data-page="home">首頁</button><button data-page="link">鏈路</button><button data-page="path">路徑</button><button data-page="extra">換算</button><button data-page="spectrum">頻譜</button>
+  <button data-page="check">清單</button></nav>
+<script>
+const $=id=>document.getElementById(id);
+const val=id=>{
+  const el=$(id);
+  if(!el) return NaN;
+  const raw=String(el.value??'').trim().replace(/[−–—]/g,'-').replace(/[,，]/g,'');
+  return Number.parseFloat(raw);
+};
+const f=(n,d=3)=>Number.isFinite(n)?n.toLocaleString('zh-TW',{maximumFractionDigits:d}):'—';
+function calcDbm(){const d=val('dbmIn'),mw=Math.pow(10,d/10),w=mw/1000,dbw=d-30; $('dbmResult').innerHTML=`<strong>${f(d,2)} dBm</strong><br>${f(w,9)} W<br>${f(mw,6)} mW<br>${f(dbw,2)} dBW`;}
+function calcPower(){let p=val('powerIn'),u=$('powerUnit').value,mw=u==='W'?p*1000:u==='mW'?p:p/1000;if(!(mw>0)){ $('powerResult').textContent='功率必須大於 0';return;} const d=10*Math.log10(mw);$('powerResult').innerHTML=`<strong>${f(d,3)} dBm</strong><br>${f(d-30,3)} dBW`;}
+function calcLink(){const e=val('tx')+val('txgain')-val('txloss');$('linkResult').innerHTML=`EIRP：<strong>${f(e,2)} dBm</strong>`;}
+function calcSnr(){const s=val('rssi')-val('noise');let q=s>=30?'優':s>=20?'良':s>=10?'邊緣':'不良';$('snrResult').innerHTML=`SNR：<strong>${f(s,2)} dB</strong><br>品質判讀：${q}`;}
+
+function calcFresnel(){
+  let distance=val('frDist'),freq=val('frFreq');
+  if($('frDistUnit').value==='m')distance/=1000;
+  if($('frFreqUnit').value==='MHz')freq/=1000;
+  if(!(distance>0)||!(freq>0)){
+    $('frResult').innerHTML='<strong style="color:#df2d24">距離與頻率必須大於 0。</strong>';
+    return;
+  }
+  const d1=distance/2,d2=distance/2;
+  const radius=17.32*Math.sqrt((d1*d2)/(freq*distance));
+  $('frResult').innerHTML=`第一菲涅耳區最大半徑：<strong>${f(radius,2)} m</strong><br>60% 建議淨空：<strong>${f(radius*.6,2)} m</strong><br>80% 保守淨空：<strong>${f(radius*.8,2)} m</strong>`;
+}
+function calcBudget(){
+  const freq=val('bFreq'),dist=val('bDist'),tx=val('bTx'),txGain=val('bTxGain'),
+        rxGain=val('bRxGain'),txLoss=val('bTxLoss'),rxLoss=val('bRxLoss'),
+        sensitivity=val('bSens'),otherLoss=val('bOther'),requiredMargin=val('bRequiredMargin');
+  const values=[freq,dist,tx,txGain,rxGain,txLoss,rxLoss,sensitivity,otherLoss,requiredMargin];
+  if(values.some(v=>!Number.isFinite(v))||!(freq>0)||!(dist>0)){
+    $('budgetResult').innerHTML='<strong style="color:#df2d24">請確認所有欄位；頻率與距離必須大於 0。</strong>';
+    return;
+  }
+  const fspl=32.44+20*Math.log10(freq)+20*Math.log10(dist);
+  const eirp=tx+txGain-txLoss;
+  const rxPower=tx+txGain+rxGain-txLoss-rxLoss-fspl-otherLoss;
+  const margin=rxPower-sensitivity;
+  let verdict='鏈路餘裕不足',color='#df2d24';
+  if(margin>=requiredMargin){verdict='符合設計餘裕';color='#1b9a49';}
+  else if(margin>=requiredMargin-5){verdict='接近門檻，建議改善';color='#b87800';}
+  $('budgetResult').innerHTML=`自由空間損耗：<strong>${f(fspl,2)} dB</strong><br>EIRP：<strong>${f(eirp,2)} dBm</strong><br>預估接收功率：<strong>${f(rxPower,2)} dBm</strong><br>接收靈敏度：<strong>${f(sensitivity,2)} dBm</strong><br>鏈路餘裕：<strong>${f(margin,2)} dB</strong><br><span style="display:block;margin-top:8px;padding:9px;border-radius:10px;background:${color}18;color:${color};font-weight:900">${verdict}</span>`;
+}
+
+
+function normalizeSweepInputs(){
+  let minR=val('spMin'), maxR=val('spMax'), holdR=val('spHold');
+  if(Number.isFinite(minR)&&Number.isFinite(maxR)&&minR>maxR){
+    const t=minR; minR=maxR; maxR=t;
+    $('spMin').value=String(minR);
+    $('spMax').value=String(maxR);
+  }
+  if(Number.isFinite(holdR)&&Number.isFinite(maxR)&&holdR<maxR){
+    holdR=maxR;
+    $('spHold').value=String(holdR);
+  }
+  return {minR,maxR,holdR};
+}
+
+function drawSpectrum(){
+  const canvas=$('spectrumCanvas');
+  if(!canvas) return false;
+  const ctx=canvas.getContext && canvas.getContext('2d');
+  if(!ctx){
+    canvas.outerHTML='<div class="sweep-note">此預覽環境不支援 Canvas，但下方數值判讀仍可使用。發布成網站後可再測試圖形功能。</div>';
+    return false;
+  }
+
+  const start=val('spStart'), end=val('spEnd');
+  const normalized=normalizeSweepInputs();
+  const minR=normalized.minR, maxR=normalized.maxR, holdR=normalized.holdR;
+  const noise=val('spNoise'), center=val('spCenter'), bw=val('spBw');
+
+  if(![start,end,minR,maxR,holdR,noise,center,bw].every(Number.isFinite) || end<=start || bw<=0){
+    return false;
+  }
+
+  const width=Math.max(300,canvas.clientWidth||900);
+  const height=Math.max(220,canvas.clientHeight||280);
+  const dpr=Math.min(window.devicePixelRatio||1,2);
+  canvas.width=Math.round(width*dpr);
+  canvas.height=Math.round(height*dpr);
+  ctx.setTransform(dpr,0,0,dpr,0,0);
+
+  const left=54,right=14,top=16,bottom=36;
+  const plotW=width-left-right, plotH=height-top-bottom;
+  const yBottom=-120, yTop=0;
+  const X=freq=>left+(freq-start)/(end-start)*plotW;
+  const Y=rssi=>top+(yTop-rssi)/(yTop-yBottom)*plotH;
+
+  ctx.clearRect(0,0,width,height);
+  ctx.fillStyle='#071426';
+  ctx.fillRect(0,0,width,height);
+
+  ctx.font='11px -apple-system,BlinkMacSystemFont,sans-serif';
+  ctx.fillStyle='rgba(220,235,250,.82)';
+  ctx.strokeStyle='rgba(255,255,255,.13)';
+  ctx.lineWidth=1;
+
+  for(let r=0;r>=-120;r-=20){
+    const y=Y(r);
+    ctx.beginPath();ctx.moveTo(left,y);ctx.lineTo(width-right,y);ctx.stroke();
+    ctx.fillText(String(r),8,y+4);
+  }
+  for(let i=0;i<=6;i++){
+    const freq=start+(end-start)*i/6;
+    const x=X(freq);
+    ctx.beginPath();ctx.moveTo(x,top);ctx.lineTo(x,height-bottom);ctx.stroke();
+    ctx.fillText(String(Math.round(freq)),Math.max(2,x-16),height-13);
+  }
+  ctx.fillText('RSSI (dBm)',6,12);
+  ctx.fillText('Frequency (MHz)',Math.max(left,width/2-45),height-2);
+
+  const bandLeft=Math.max(left,X(center-bw/2));
+  const bandRight=Math.min(width-right,X(center+bw/2));
+  if(bandRight>bandLeft){
+    ctx.fillStyle='rgba(72,213,104,.20)';
+    ctx.fillRect(bandLeft,top,bandRight-bandLeft,plotH);
+    ctx.strokeStyle='#66dd83';
+    ctx.lineWidth=2;
+    ctx.strokeRect(bandLeft,top,bandRight-bandLeft,plotH);
+    ctx.fillStyle='#80ee9b';
+    ctx.fillText('Operating',bandLeft+4,top+13);
+  }
+
+  const peaks=[
+    {p:.18,a:.55,w:.020},{p:.34,a:.72,w:.012},{p:.52,a:.62,w:.010},
+    {p:.66,a:.90,w:.007},{p:.82,a:.46,w:.012}
+  ];
+
+  function makeSeries(base,scale,wobble){
+    const out=[];
+    const count=260;
+    for(let i=0;i<count;i++){
+      const p=i/(count-1);
+      let r=base + Math.sin(i*.24)*wobble + Math.sin(i*.071)*wobble*.65;
+      for(const peak of peaks){
+        r += Math.exp(-Math.pow((p-peak.p)/peak.w,2)) * (maxR-base) * peak.a * scale;
+      }
+      r=Math.max(-119,Math.min(-1,r));
+      out.push([left+p*plotW,Y(r)]);
+    }
+    return out;
+  }
+
+  function stroke(points,color,lineWidth){
+    ctx.strokeStyle=color;ctx.lineWidth=lineWidth;ctx.beginPath();
+    points.forEach((pt,i)=>i?ctx.lineTo(pt[0],pt[1]):ctx.moveTo(pt[0],pt[1]));
+    ctx.stroke();
+  }
+
+  stroke(makeSeries(minR,.20,1.0),'#54c8ff',1.5);
+  stroke(makeSeries(maxR,.78,1.8),'#ff775f',2.0);
+  stroke(makeSeries(holdR,.98,1.2),'#ffd54a',2.0);
+
+  ctx.strokeStyle='#ed69dd';
+  ctx.lineWidth=1.5;
+  ctx.beginPath();ctx.moveTo(left,Y(noise));ctx.lineTo(width-right,Y(noise));ctx.stroke();
+
+  return true;
+}
+
+function analyzeSpectrum(){
+  const normalized=normalizeSweepInputs();
+  const minR=normalized.minR, maxR=normalized.maxR, holdR=normalized.holdR;
+  const noise=val('spNoise');
+  const result=$('spResult');
+  if(!result) return;
+
+  if(![minR,maxR,holdR,noise].every(Number.isFinite)){
+    result.innerHTML='<strong style="color:#df2d24">請輸入有效數值。</strong>';
+    return;
+  }
+
+  const variation=maxR-minR;
+  const historicalGap=holdR-maxR;
+  let label='穩定／較乾淨', cls='good';
+  let meaning='Min RSSI 與 Max RSSI 的差距較小，表示掃描期間的能量變化有限。';
+
+  if(variation>=8 && variation<25){
+    label='存在間歇活動'; cls='warn';
+    meaning='掃描期間曾出現高於背景的訊號，可能是週期性或間歇性發射。';
+  }else if(variation>=25){
+    label='強烈突發訊號'; cls='bad';
+    meaning='Max RSSI 明顯高於 Min RSSI，代表曾出現強烈突發能量。選頻時應避開明顯尖峰及其鄰近區域。';
+  }
+
+  if(noise>-85){
+    label='Noise Floor 偏高'; cls='bad';
+    meaning='整體背景能量偏高，可能是寬頻雜訊、鄰近強訊號，或接收前端受壓制。';
+  }
+
+  const holdText=historicalGap>=8
+    ? 'Max Hold 明顯高於目前 Max RSSI，表示掃描期間曾短暫出現更強的訊號。'
+    : 'Max Hold 與 Max RSSI 接近，表示目前量測與歷史峰值差異不大。';
+
+  result.innerHTML=`
+    <div class="analysis-title">
+      <b>自動判讀</b><span class="badge ${cls}">${label}</span>
+    </div>
+    <div class="kv">
+      <div><small>Min–Max 差值</small><strong>${f(variation,1)} dB</strong></div>
+      <div><small>歷史峰值差</small><strong>${f(historicalGap,1)} dB</strong></div>
+      <div><small>Noise Floor</small><strong>${f(noise,1)} dBm</strong></div>
+    </div>
+    <div class="sweep-note">${meaning}<br>${holdText}</div>`;
+}
+
+function updateSpectrum(){
+  try{
+    drawSpectrum();
+    analyzeSpectrum();
+  }catch(error){
+    const result=$('spResult');
+    if(result){
+      result.innerHTML='<strong style="color:#df2d24">頻譜模組執行失敗：</strong> '+String(error.message||error);
+    }
+  }
+}
+
+function calcExtra(){const mhz=val('waveFreq'),uv=val('uv'),lambda=300/mhz,dbuv=20*Math.log10(uv);$('extraResult').innerHTML=`波長：約 <strong>${f(lambda,4)} m</strong><br>dBμV：<strong>${f(dbuv,3)} dBμV</strong>`;}
+const checkItems=['確認合法頻率、頻寬與 EIRP','完成視距與菲涅耳區評估','完成干擾掃頻與備用頻率規劃','確認天線方位、俯仰與極化一致','檢查線纜、接頭、防水、接地與避雷','記錄 RSSI、Noise Floor、SNR、MCS','測試延遲、丟包與吞吐量','保存參數、方位、天候與異常紀錄'];
+$('checks').innerHTML=checkItems.map((x,i)=>`<label style="display:flex;gap:10px;padding:10px 3px;border-bottom:1px solid var(--line)"><input type="checkbox" id="ck${i}" style="transform:scale(1.25)"><span>${x}</span></label>`).join('');
+checkItems.forEach((_,i)=>{
+  const c=$('ck'+i);
+  try{ c.checked=localStorage.getItem('ck'+i)==='1'; }catch(e){}
+  c.onchange=()=>{ try{ localStorage.setItem('ck'+i,c.checked?'1':'0'); }catch(e){} };
+});
+document.querySelectorAll('.bottom-nav button').forEach(b=>{b.addEventListener('click',()=>{document.querySelectorAll('.bottom-nav button').forEach(x=>x.classList.remove('active'));document.querySelectorAll('.page').forEach(x=>x.classList.remove('active'));b.classList.add('active');$(b.dataset.page).classList.add('active');window.scrollTo({top:0,behavior:'smooth'});});});
+['dbmIn'].forEach(id=>$(id).addEventListener('input',calcDbm));$('powerIn').addEventListener('input',calcPower);$('powerUnit').addEventListener('change',calcPower);
+['tx','txgain','txloss'].forEach(id=>$(id).addEventListener('input',calcLink));
+['rssi','noise'].forEach(id=>$(id).addEventListener('input',calcSnr));
+$('frCalc').addEventListener('click',calcFresnel);$('budgetCalc').addEventListener('click',calcBudget);['frDist','frFreq'].forEach(id=>$(id).addEventListener('input',calcFresnel));['frDistUnit','frFreqUnit'].forEach(id=>$(id).addEventListener('change',calcFresnel));['bFreq','bDist','bTx','bTxGain','bRxGain','bTxLoss','bRxLoss','bSens','bOther','bRequiredMargin'].forEach(id=>$(id).addEventListener('input',calcBudget));
+['waveFreq','uv'].forEach(id=>$(id).addEventListener('input',calcExtra));
+
+const spectrumButton=$('spAnalyze');
+if(spectrumButton) spectrumButton.addEventListener('click',updateSpectrum);
+['spStart','spEnd','spMin','spMax','spHold','spNoise','spCenter','spBw'].forEach(id=>{
+  const el=$(id);
+  if(el) el.addEventListener('input',updateSpectrum);
+});
+window.addEventListener('resize',()=>{ clearTimeout(window.__spResize); window.__spResize=setTimeout(drawSpectrum,120); });
+
+calcDbm();calcPower();calcLink();calcSnr();calcFresnel();calcBudget();calcExtra();updateSpectrum();
+</script>
+</body></html>
