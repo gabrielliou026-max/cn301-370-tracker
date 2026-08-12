@@ -440,5 +440,12 @@
  "(1-11)SIGMA的base_line不完整(未包含client和pots)": "(1-11) SIGMA base_line incomplete (does not include client and POTS)",
  "(1-9)DNS-SVR名稱未改(還是DC)": "(1-9) DNS-SVR name not changed (still DC)",
  "(1-9)MissionOPs的VM的w32tm功能未開啟": "(1-9) MissionOps VM w32tm service not enabled",
- "(1-9)伺服器關機時未亮橘燈": "(1-9) Server does not show orange light when shut down"
+ "(1-9)伺服器關機時未亮橘燈": "(1-9) Server does not show orange light when shut down",
+ "發電機故障（啟動失敗）": "Generator fault (start-up failure)",
+ "無線電端 藍色管理接頭故障（pin腳彎曲）": "Radio-end blue management connector faulty (bent pins)",
+ "(1-12)15米纜線藍色MGMT損壞": "(1-12) 15m cable blue MGMT damaged",
+ "Ping的到NTP，無法進入網頁": "Can ping NTP but cannot access web page",
+ "MOPS未安裝": "MOPS not installed",
+ "RS側吸磁開關無做用": "RS-side magnetic switch not functioning",
+ "筆電AD帳號不可登入": "Laptop AD account cannot log in"
 }
