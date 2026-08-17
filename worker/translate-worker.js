@@ -17,13 +17,26 @@
  *
  * 部署後請把 Worker 網址（形如 https://xxx.<你的帳號>.workers.dev）
  * 和你設定的 SITE_SHARED_SECRET 告訴接手的 AI，用於串接 index.html。
+ *
+ * ── 每日翻譯字元上限（防濫用，2026-08-17 新增）───────────────────────
+ * SITE_SHARED_SECRET 會被前端公開程式碼帶出去，不是真正保密的機制
+ * （CORS 只擋瀏覽器跨網域請求，擋不住有人直接用程式呼叫這個網址）。
+ * 為了防止有人抓到網址+密鑰後拿去大量翻譯（例如整篇論文），加一道
+ * 「不管誰呼叫、一天翻譯總字元數超過上限就全部拒絕」的硬性防線，
+ * 需要額外綁定一個 Cloudflare KV 命名空間：
+ *   Cloudflare Dashboard → Workers & Pages → 左側「Storage & Databases」
+ *   → KV → Create namespace（取名如 fics-translate-usage）
+ *   → 回到這個 Worker → Settings → Bindings → Add → KV Namespace
+ *   → Variable name 填 USAGE_KV，選剛建立的命名空間 → Deploy
+ * 未綁定 KV 時此限制不生效（向下相容，但強烈建議設定）。
  */
 
 // 只允許從故障追蹤網站呼叫（依你的 GitHub Pages 網址調整）
 const ALLOWED_ORIGIN = "https://gabrielliou026-max.github.io";
 
-const MAX_TEXTS = 30;      // 單次請求最多幾筆，避免異常請求拉爆用量
-const MAX_CHARS = 500;     // 單筆文字最多字元數
+const MAX_TEXTS = 30;         // 單次請求最多幾筆，避免異常請求拉爆用量
+const MAX_CHARS = 500;        // 單筆文字最多字元數
+const DAILY_CHAR_CAP = 20000; // 每日翻譯字元總量上限（遠高於正常用量，但足以擋住整篇文件翻譯）
 
 export default {
   async fetch(request, env) {
@@ -58,6 +71,12 @@ export default {
       return json({ error: "server not configured" }, 500);
     }
 
+    const totalChars = texts.reduce((sum, t) => sum + t.length, 0);
+    const withinQuota = await checkAndConsumeQuota(env, totalChars);
+    if (!withinQuota) {
+      return json({ error: "daily quota exceeded" }, 429);
+    }
+
     const gUrl = `https://translation.googleapis.com/language/translate/v2?key=${env.GOOGLE_TRANSLATE_API_KEY}`;
     let gRes;
     try {
@@ -84,6 +103,19 @@ export default {
     return json({ translations }, 200);
   },
 };
+
+// 每日字元配額檢查＋扣除（用 KV 儲存當天累計字元數，key 依日期自然輪替）
+// 未綁定 USAGE_KV 時直接放行（向下相容）；KV 為最終一致性，短時間內
+// 高併發可能有些微誤差，但作為防濫用防線已足夠，不追求絕對精確。
+async function checkAndConsumeQuota(env, chars) {
+  if (!env.USAGE_KV) return true;
+  const key = "usage:" + new Date().toISOString().slice(0, 10); // usage:YYYY-MM-DD
+  const current = parseInt(await env.USAGE_KV.get(key)) || 0;
+  if (current + chars > DAILY_CHAR_CAP) return false;
+  // 2 天後自動過期，key 不會無限累積
+  await env.USAGE_KV.put(key, String(current + chars), { expirationTtl: 172800 });
+  return true;
+}
 
 function corsHeaders() {
   return {
