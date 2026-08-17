@@ -221,10 +221,16 @@ Python 腳本執行結束印 WARNING、網頁版產報告後跳 alert 提示未�
   `TRANSLATE_SITE_KEY` 常數，前端原始碼本來就會被看到）；真正的保護是
   **Google API 金鑰只存在 Worker 的加密 Secret**，不進前端、不進 repo
 - Worker 限制：單次最多 30 筆、單筆最多 500 字元、CORS 僅限本站來源
+- **每日字元上限（2026-08-17 新增，防濫用）**：`DAILY_CHAR_CAP`（預設 20,000 字元/天），
+  用 Cloudflare KV（綁定名稱 `USAGE_KV`）記錄當日累計，超過整批拒絕（429）。
+  因為 `SITE_SHARED_SECRET` 會被前端公開程式碼帶出去，CORS 擋不住有人直接寫程式
+  呼叫這個網址（例如拿去翻譯論文），這是唯一能真正限制濫用規模的防線。
+  未綁 KV 則不限制，部署步驟見 `worker/README.md`
 - **踩過的坑**：Cloudflare 新版 Dashboard 加 Secret 後**不會自動上線**，
   必須到 Deployments 分頁手動「Promote version」新版本才會生效
   （否則會一直卡在舊版本回 401 unauthorized，即使 Settings 顯示 Secret 已存在）
 - 此功能**只用在 index.html（故障系統）**，`domain.html` 介面本身就是英文、不需要
+- 建議另在 Google Cloud Console 設 Billing Budget Alert（低門檻如 1 美元）當第二道保險
 
 **版型雙軌同步規則再次提醒**：本次接 desc_en 時發現先前 `gen_word_report.py`
 的多單位改版（GROUPS_BY_UNIT / 日期列加「作業單位」字樣 / 74G75G 標題改「全部車輛」）
