@@ -21,13 +21,35 @@ TODAY      = datetime.date.today().isoformat()
 # 輸出目錄：預設為腳本所在目錄，可用環境變數 REPORT_OUT_DIR 覆寫
 SCRATCHPAD = os.environ.get("REPORT_OUT_DIR", os.path.dirname(os.path.abspath(__file__)))
 
-# ── Rotations (57 cars) ───────────────────────────────────────────────────────
-ROTATIONS = [
-    ("第一輪 1st Rotation",  ["CN360","CN359","CN358","CN357","CN356","CN353","CN370","CN369","NMS382","NMS381","NMS383"]),
-    ("第二輪 2nd Rotation",  ["CN362","CN320","CN321","CN309","CN302","CN305","CN301","CN344","CN329","CN323","CN303","CN319","CN308","CN310","CN314"]),
-    ("第三輪 3rd Rotation",  ["CN324","CN337","CN327","CN347","CN326","CN346","CN361","CN355","CN342","CN311","CN330","CN341","CN348","CN354","CN331"]),
-    ("第四輪 4th Rotation",  ["CN343","CN345","CN312","CN339","CN340","CN336","CN307","CN313","CN364","CN322","CN325","CN306","CN338","CN304","CN363","CN328"]),
-]
+# ── 單位設定 ──────────────────────────────────────────────────────────────────
+# 三單位共用同一個 faultData collection（doc id = 車號），車號範圍互不重疊
+# （73G: 301-370/NMS38x, 74G: 501-546/NMS58x, 75G: 401-446/NMS48x），對應 index.html 的 UNITS 設定。
+def car_range(a, b):
+    return [f"CN{n}" for n in range(a, b + 1)]
+
+# 73G 有使用者提供的輪次分組（DT&E 1st/2nd/3rd/4th Rotation），其他單位目前無輪次資訊，
+# 故以單一分組（全部車輛）呈現；若日後取得 74G/75G 的輪次分組，可依此格式擴充。
+GROUPS_BY_UNIT = {
+    "73G": [
+        ("第一輪 1st Rotation",  ["CN360","CN359","CN358","CN357","CN356","CN353","CN370","CN369","NMS382","NMS381","NMS383"]),
+        ("第二輪 2nd Rotation",  ["CN362","CN320","CN321","CN309","CN302","CN305","CN301","CN344","CN329","CN323","CN303","CN319","CN308","CN310","CN314"]),
+        ("第三輪 3rd Rotation",  ["CN324","CN337","CN327","CN347","CN326","CN346","CN361","CN355","CN342","CN311","CN330","CN341","CN348","CN354","CN331"]),
+        ("第四輪 4th Rotation",  ["CN343","CN345","CN312","CN339","CN340","CN336","CN307","CN313","CN364","CN322","CN325","CN306","CN338","CN304","CN363","CN328"]),
+    ],
+    "74G": [
+        ("全部車輛 All Cars", ["NMS581","NMS582", *car_range(501,514), *car_range(519,531), *car_range(536,546)]),
+    ],
+    "75G": [
+        ("全部車輛 All Cars", ["NMS481","NMS482", *car_range(401,414), *car_range(419,431), *car_range(436,446)]),
+    ],
+}
+UNIT_TITLES = {"73G": "CN301-370", "74G": "CN501-546", "75G": "CN401-446"}
+
+# 選擇要產製的單位：環境變數 REPORT_UNIT 覆寫，預設 73G（維持既有行為）
+UNIT = os.environ.get("REPORT_UNIT", "73G")
+if UNIT not in GROUPS_BY_UNIT:
+    UNIT = "73G"
+ROTATIONS = GROUPS_BY_UNIT[UNIT]
 
 # ── Status ────────────────────────────────────────────────────────────────────
 # 均完成：網站清點功能（2026-07-07 起）寫入的狀態，排最前
@@ -181,7 +203,8 @@ def build_doc(fault_data, active_only=False):
     r = p.add_run(f"DT&E {label_zh} {label_en}"); r.bold = True; r.font.size = Pt(18); r.font.color.rgb = NAVY
 
     p2 = doc.add_paragraph(); no_space(p2); p2.alignment = WD_ALIGN_PARAGRAPH.CENTER
-    r2 = p2.add_run(f"日期 Date：{TODAY}"); r2.font.size = Pt(10); r2.font.color.rgb = RGBColor(0x44,0x55,0x66)
+    r2 = p2.add_run(f"日期 Date：{TODAY}　｜　作業單位 Unit：{UNIT}（{UNIT_TITLES[UNIT]}）")
+    r2.font.size = Pt(10); r2.font.color.rgb = RGBColor(0x44,0x55,0x66)
 
     if active_only:
         p3 = doc.add_paragraph(); no_space(p3); p3.alignment = WD_ALIGN_PARAGRAPH.CENTER
@@ -353,16 +376,22 @@ if __name__ == "__main__":
     fault_data = fetch_all()
     print(f"  Got data for {len(fault_data)} cars")
 
-    # Check untranslated
+    # Check untranslated（只檢查目前單位範圍內的車，避免其他單位資料造成誤判）
+    cars_in_scope = {c for _, cs in ROTATIONS for c in cs}
     missing = set()
-    for items in fault_data.values():
+    for car, items in fault_data.items():
+        if car not in cars_in_scope:
+            continue
         for f in items:
             d = f["desc"].strip()
             if d and d not in ZH_EN:
                 missing.add(d)
     if missing:
-        print(f"  WARNING: {len(missing)} untranslated descriptions (will show original)")
+        print(f"  WARNING: {len(missing)} untranslated descriptions in {UNIT} (will show original)")
+        for d in sorted(missing):
+            print(f"    - {d}")
 
-    out1 = f"{SCRATCHPAD}/故障日報_{TODAY}.docx"
+    unit_suffix = "" if UNIT == "73G" else f"_{UNIT}"
+    out1 = f"{SCRATCHPAD}/故障日報{unit_suffix}_{TODAY}.docx"
     build_doc(fault_data, active_only=False).save(out1)
-    print(f"OK: {out1}")
+    print(f"OK: {out1}  (unit={UNIT})")
