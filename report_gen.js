@@ -96,12 +96,15 @@
   }
 
   // ── document.xml 組裝（對應 build_doc(active_only=False)）──
-  function buildDocumentXml(rotations, faultData, zhEn, today) {
+  const UNIT_TITLES = { "73G": "CN301-370", "74G": "CN501-546", "75G": "CN401-446" };
+
+  function buildDocumentXml(rotations, faultData, zhEn, today, unitId) {
     const parts = [PREFIX];
 
     // 標題與日期
     parts.push(paraSpacingFirst(run("DT&E 故障日報 Daily Fault Report", { b: 1, color: NAVY, sz: 36 }), "center"));
-    parts.push(paraSpacingFirst(run(`日期 Date：${today}`, { color: "445566", sz: 20 }), "center"));
+    const unitTitle = UNIT_TITLES[unitId] || unitId;
+    parts.push(paraSpacingFirst(run(`日期 Date：${today}　｜　作業單位 Unit：${unitId}（${unitTitle}）`, { color: "445566", sz: 20 }), "center"));
 
     // 摘要
     const scopeCars = rotations.flatMap(r => r[1]);
@@ -167,7 +170,7 @@
             tc(para(run(String(idx + 1), { color: "555555", sz: 16 }), "center"), 1701, bg, COL_WIDTHS[0], true) +
             tc(para(statusRuns, "center"), 1701, bg, COL_WIDTHS[1], true) +
             tc(para(run(f.desc || "", { color: NAVY, sz: 16 })), 1701, bg, COL_WIDTHS[2], true) +
-            tc(para(run(translate(f.desc || "", zhEn), { color: NAVY, sz: 16 })), 1701, bg, COL_WIDTHS[3], true) +
+            tc(para(run(f.desc_en || translate(f.desc || "", zhEn), { color: NAVY, sz: 16 })), 1701, bg, COL_WIDTHS[3], true) +
             tc(para(person ? run(person, { b: 1, color: "0E7490", sz: 16 }) : run("—", { color: "AAAAAA", sz: 16 }), "center"), 1701, bg, COL_WIDTHS[4], true) +
             tc(para(witness ? run(witness, { b: 1, color: "92400E", sz: 16 }) : run("—", { color: "AAAAAA", sz: 16 }), "center"), 1701, bg, COL_WIDTHS[5], true) +
             "</w:tr>";
@@ -203,7 +206,8 @@
     const out = {};
     cars.forEach(car => {
       const items = (savedCloud[car] || []).map(f => ({
-        status: f.status || "待確認", desc: f.desc || "", person: f.person || "", witness: f.witness || "",
+        status: f.status || "待確認", desc: f.desc || "", desc_en: f.desc_en || "",
+        person: f.person || "", witness: f.witness || "",
       }));
       if (items.length) {
         items.sort((a, b) => (RG_STATUS_ORDER[a.status] ?? 9) - (RG_STATUS_ORDER[b.status] ?? 9));
@@ -219,9 +223,9 @@
     const now = new Date();
     const today = `${now.getFullYear()}-${pad(now.getMonth() + 1)}-${pad(now.getDate())}`;
 
-    const rotations = unitId === "73G" ? ROTATIONS_73G : [[`${unitId} 全車清單 All Cars`, cars]];
+    const rotations = unitId === "73G" ? ROTATIONS_73G : [["全部車輛 All Cars", cars]];
     const faultData = toFaultData(rotations.flatMap(r => r[1]), savedCloud);
-    const xml = buildDocumentXml(rotations, faultData, _zhEn, today);
+    const xml = buildDocumentXml(rotations, faultData, _zhEn, today, unitId);
 
     const zip = await JSZip.loadAsync(_tmplBuf.slice(0));
     zip.file("word/document.xml", xml);
@@ -239,11 +243,11 @@
     // 延後釋放，避免下載尚未開始 URL 就失效
     setTimeout(() => URL.revokeObjectURL(a.href), 10000);
 
-    // 未收錄翻譯提醒（與 Python 腳本的 WARNING 對應）
+    // 未收錄翻譯提醒（與 Python 腳本的 WARNING 對應）；已有即時翻譯結果的不算未翻譯
     const missing = new Set();
     Object.values(faultData).forEach(items => items.forEach(f => {
       const d = (f.desc || "").trim();
-      if (d && !Object.prototype.hasOwnProperty.call(_zhEn, d)) missing.add(d);
+      if (d && !f.desc_en && !Object.prototype.hasOwnProperty.call(_zhEn, d)) missing.add(d);
     }));
     return { missing: [...missing] };
   };

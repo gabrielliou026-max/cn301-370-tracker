@@ -122,6 +122,7 @@ def fetch_all():
                 "id":      fid,
                 "status":  m.get("status",  {}).get("stringValue", "待確認"),
                 "desc":    m.get("desc",    {}).get("stringValue", ""),
+                "desc_en": m.get("desc_en", {}).get("stringValue", ""),
                 "person":  m.get("person",  {}).get("stringValue", ""),
                 "witness": m.get("witness", {}).get("stringValue", ""),
             })
@@ -339,7 +340,7 @@ def build_doc(fault_data, active_only=False):
                 c3 = row.cells[3]; set_cell_bg(c3,bg); set_cell_width(c3,C_EN)
                 c3.vertical_alignment = WD_ALIGN_VERTICAL.CENTER
                 p3 = c3.paragraphs[0]; no_space(p3)
-                r3 = p3.add_run(translate(f["desc"])); r3.font.size = Pt(8); r3.font.color.rgb = NAVY
+                r3 = p3.add_run(f.get("desc_en") or translate(f["desc"])); r3.font.size = Pt(8); r3.font.color.rgb = NAVY
 
                 # Person
                 c4 = row.cells[4]; set_cell_bg(c4,bg); set_cell_width(c4,C_RP)
@@ -384,7 +385,8 @@ if __name__ == "__main__":
             continue
         for f in items:
             d = f["desc"].strip()
-            if d and d not in ZH_EN:
+            # 已有即時翻譯結果（desc_en）的項目不算未翻譯，即使詞庫沒收錄
+            if d and d not in ZH_EN and not f.get("desc_en"):
                 missing.add(d)
     if missing:
         print(f"  WARNING: {len(missing)} untranslated descriptions in {UNIT} (will show original)")
