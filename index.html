@@ -148,14 +148,16 @@
   }
   .fi-desc::placeholder { color: #cbd5e1; font-style: italic; }
 
+  /* 中文描述是主要內容（多數使用者為中文），英文為輔助對照：
+     字級與中文描述一致、清楚可讀，但用較淡的顏色維持主副分明 */
   .fi-desc-en {
-    font-size: 0.95rem; color: #1a2332; font-weight: 500;
+    font-size: 0.8rem; color: #52627a; font-weight: 400;
     padding: 2px 6px 6px; line-height: 1.5; word-break: break-word;
   }
   .fi-desc-en::before {
     content: "EN"; display: inline-block; margin-right: 6px;
-    font-size: 0.62rem; font-weight: 700; color: #2d4a8a;
-    background: #eff6ff; border-radius: 4px; padding: 1px 5px;
+    font-size: 0.6rem; font-weight: 700; color: #64748b;
+    background: #f1f5f9; border-radius: 4px; padding: 1px 5px;
     vertical-align: 1px;
   }
 
