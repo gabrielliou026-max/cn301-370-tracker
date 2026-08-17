@@ -148,6 +148,12 @@
   }
   .fi-desc::placeholder { color: #cbd5e1; font-style: italic; }
 
+  .fi-desc-en {
+    font-size: 0.72rem; color: #7c8797; font-style: italic;
+    padding: 0 6px 4px; line-height: 1.4; word-break: break-word;
+  }
+  .fi-desc-en::before { content: "EN  "; font-weight: 600; opacity: 0.7; font-style: normal; }
+
   .fi-person {
     flex-shrink: 0; width: 110px;
     border: 1px solid #e2e8f0; border-radius: 8px;
@@ -517,13 +523,17 @@ function renderCarCell(car) {
             : ""}
         </div>`
       : "";
+    // 即時翻譯結果（存檔後背景自動產生）；均完成不顯示描述時同樣不顯示
+    const enHtml = (showDetail && f.desc_en)
+      ? `<div class="fi-desc-en">${escH(f.desc_en)}</div>`
+      : "";
     return `<div class="fault-item${itemCls}" id="fi_${car}_${f.id}">
       <select class="fi-select ${cls}" onchange="updateFaultStatus('${car}','${f.id}',this)">${opts}</select>
       ${descHtml}
       ${personHtml}
       ${witnessHtml}
       <button class="fi-del-btn" onclick="removeFault('${car}','${f.id}')" title="刪除此筆">✕</button>
-    </div>`;
+    </div>${enHtml}`;
   }).join("");
 
   // 尚未檢查的車顯示「均完成」快速鍵，一鍵完成清點
@@ -715,6 +725,7 @@ function updateFaultDesc(car, id, val) {
   const f = faultList[car].find(f => f.id === id);
   if (!f) return;
   f.desc = val;
+  delete f.desc_en; // 描述變更，舊翻譯失效，待下次儲存後由背景自動翻譯補上
   if (f._default) { delete f._default; f._new = true; defaultTouched(car, id); }
   else if (!f._new) { f._dirty = true; }
   updateSaveBar();
@@ -851,6 +862,10 @@ function commitChanges() {
     // 靠 merge:true 保留雲端版本，避免蓋掉別人同時修改的其他項目
     faultList[car].filter(f => !f._del && !f._default && (f._new || f._dirty)).forEach(f => {
       data[f.id] = { status: f.status, desc: f.desc, person: f.person || "", witness: f.witness || "" };
+      // 描述變更後 desc_en 已在 updateFaultDesc 清除；若本機沒有翻譯結果，
+      // 一併清掉雲端舊值（Firestore merge 對巢狀欄位可用刪除標記），
+      // 避免顯示跟新描述對不上的過期英文，待背景自動翻譯補上新的
+      if (!f.desc_en) data[f.id].desc_en = firebase.firestore.FieldValue.delete();
     });
     faultList[car].filter(f => f._del && !f._new).forEach(f => {
       data[f.id] = firebase.firestore.FieldValue.delete();
@@ -871,10 +886,100 @@ function commitChanges() {
       if (countPending() === 0) document.getElementById("saveBar").style.display = "none";
       else updateSaveBar();
     }, 1800);
+    // 背景自動翻譯（不阻塞儲存流程，失敗也不影響已完成的儲存）
+    autoTranslateChanged(carsChanged);
   }).catch(err => {
     document.getElementById("saveBarText").innerHTML = "❌ 儲存失敗，請重試　Save failed";
     console.warn("batch commit failed", err);
   });
+}
+
+// ── 即時翻譯（存檔後自動翻譯）─────────────────────────────────────────────
+// 架構：詞庫（zh_en.json）優先查表，免費、瞬間、術語準確；查無收錄才呼叫
+// Cloudflare Worker 代理 Google Translation API。Worker 網址與共用密鑰是
+// 公開資訊（本來就會出現在前端原始碼），真正的保護是 Google API 金鑰只存在
+// Worker 的加密 Secret，詳見 worker/README.md。
+const TRANSLATE_WORKER_URL = "https://ics-translate.gabrielliou-026.workers.dev/";
+const TRANSLATE_SITE_KEY = "fics2026translate";
+
+let ZH_EN = {};
+let zhEnLoadPromise = null;
+function ensureDictLoaded() {
+  if (!zhEnLoadPromise) {
+    zhEnLoadPromise = fetch("zh_en.json")
+      .then(r => r.ok ? r.json() : {})
+      .then(d => { ZH_EN = d; })
+      .catch(() => { ZH_EN = {}; });
+  }
+  return zhEnLoadPromise;
+}
+ensureDictLoaded(); // 頁面載入時就先背景抓，存檔當下多半已經就緒
+
+// 對這次儲存變動的車輛，找出還沒有英文翻譯的項目：詞庫命中立即套用，
+// 沒命中的才彙整成一批呼叫 Worker（去重複、分批送出避免單次過大）
+async function autoTranslateChanged(carsChanged) {
+  await ensureDictLoaded();
+  const toApi = [];              // [{ car, id, desc }]
+  const dictHits = [];           // [{ car, id, en }]
+
+  carsChanged.forEach(car => {
+    if (!faultList[car]) return;
+    faultList[car].filter(f => !f._del).forEach(f => {
+      const d = (f.desc || "").trim();
+      if (!d || f.desc_en) return;
+      const known = ZH_EN[d];
+      if (known) { f.desc_en = known; dictHits.push({ car, id: f.id, en: known }); }
+      else toApi.push({ car, id: f.id, desc: d });
+    });
+  });
+
+  if (dictHits.length) {
+    new Set(dictHits.map(h => h.car)).forEach(car => renderCarCell(car));
+    persistDescEn(dictHits);
+  }
+  if (!toApi.length) return;
+
+  const uniqueTexts = [...new Set(toApi.map(t => t.desc))];
+  const CHUNK = 25; // Worker 單次請求上限 30 筆，留餘裕
+  const textToEn = {};
+  for (let i = 0; i < uniqueTexts.length; i += CHUNK) {
+    const chunk = uniqueTexts.slice(i, i + CHUNK);
+    try {
+      const res = await fetch(TRANSLATE_WORKER_URL, {
+        method: "POST",
+        headers: { "Content-Type": "application/json", "X-Site-Key": TRANSLATE_SITE_KEY },
+        body: JSON.stringify({ texts: chunk }),
+      });
+      if (!res.ok) { console.warn("即時翻譯失敗", res.status); continue; }
+      const data = await res.json();
+      (data.translations || []).forEach((en, idx) => { textToEn[chunk[idx]] = en; });
+    } catch (e) {
+      console.warn("即時翻譯請求失敗", e);
+    }
+  }
+
+  const apiHits = [];
+  toApi.forEach(({ car, id, desc }) => {
+    const en = textToEn[desc];
+    if (!en) return;
+    const f = faultList[car] && faultList[car].find(x => x.id === id);
+    if (f) { f.desc_en = en; apiHits.push({ car, id, en }); }
+  });
+  if (apiHits.length) {
+    new Set(apiHits.map(h => h.car)).forEach(car => renderCarCell(car));
+    persistDescEn(apiHits);
+  }
+}
+
+// 把翻譯結果逐項寫回雲端（只 merge desc_en 這個子欄位，不影響其他人同時的修改）
+function persistDescEn(entries) {
+  const batch = db.batch();
+  const byCar = {};
+  entries.forEach(({ car, id, en }) => { (byCar[car] = byCar[car] || {})[id] = { desc_en: en }; });
+  Object.entries(byCar).forEach(([car, data]) => {
+    batch.set(db.collection("faultData").doc(car), data, { merge: true });
+  });
+  batch.commit().catch(err => console.warn("翻譯結果寫回失敗", err));
 }
 
 // ── 單位切換 UI 初始化 ──
@@ -1039,7 +1144,7 @@ db.collection("faultData").onSnapshot(snap => {
     const cloudItems = [];
     Object.entries(data).forEach(([id, val]) => {
       if (id === "updatedAt" || id === "updatedBy" || typeof val !== "object" || val === null) return;
-      cloudItems.push({ id, status: val.status || "待確認", desc: val.desc || "", person: val.person || "", witness: val.witness || "" });
+      cloudItems.push({ id, status: val.status || "待確認", desc: val.desc || "", desc_en: val.desc_en || "", person: val.person || "", witness: val.witness || "" });
     });
     // 依狀態排序：故障 → 維修中 → 待確認 → 已修復
     cloudItems.sort((a, b) => (STATUS_SORT[a.status] ?? 9) - (STATUS_SORT[b.status] ?? 9));

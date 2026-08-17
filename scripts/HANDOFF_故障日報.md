@@ -189,7 +189,7 @@ STATUS_ORDER = {"已修復完成":0, "故障":1, "維修中":2, "待確認":3}  
 
 ## 7. 翻譯機制
 
-詞庫在 **repo 根目錄 `zh_en.json`**（2026-07-09 起，Python 腳本與網站共用的唯一來源，333+ 筆）。
+詞庫在 **repo 根目錄 `zh_en.json`**（2026-07-09 起，Python 腳本與網站共用的唯一來源，449+ 筆）。
 `translate(zh)` 以 `zh.strip()` 精確比對，找不到時回傳原文；
 Python 腳本執行結束印 WARNING、網頁版產報告後跳 alert 提示未收錄筆數。
 
@@ -198,6 +198,38 @@ Python 腳本執行結束印 WARNING、網頁版產報告後跳 alert 提示未�
 2. 比對 Firestore 所有 desc vs `zh_en.json` keys 找出缺漏
 3. 把新的中英對照補進 `zh_en.json`
 4. 重跑確認無 WARNING —— commit 後**網站與腳本同時生效**
+
+### 7.1 即時翻譯（2026-08-17 新增：「回報後自動翻譯」）
+
+**架構**：`index.html` 存檔成功後，背景呼叫 `autoTranslateChanged()`——
+對每筆有改動的故障項目，**詞庫優先查表**（免費、瞬間、術語準確）；
+詞庫沒收錄的才彙整批次呼叫 **Cloudflare Worker**（`worker/translate-worker.js`），
+由 Worker 代為呼叫 **Google Cloud Translation API**，結果寫回 Firestore 該項目的
+`desc_en` 欄位，畫面即時顯示（故障描述下方灰色小字）。
+
+**優先序（報告與網頁畫面一致）**：`desc_en`（即時翻譯結果）> 詞庫查表 > 原文。
+- `report_gen.js` 的 `f.desc_en || translate(f.desc, zhEn)`
+- `gen_word_report.py` 的 `f.get("desc_en") or translate(f["desc"])`
+- 「未翻譯」判定（WARNING / alert）也排除已有 `desc_en` 的項目
+
+**Firestore 新增欄位**：每個故障項目（map）新增 `desc_en`（字串，可空）；
+描述文字被編輯時本機立即清除 `desc_en`（`updateFaultDesc`），儲存時若本機無值
+則帶 `FieldValue.delete()` 清空雲端舊值，避免顯示跟新描述對不上的過期英文。
+
+**Cloudflare Worker**（`ics-translate`，帳號 gabrielliou-026，見 `worker/README.md`）：
+- 網址與共用密鑰是**公開資訊**（寫死在 `index.html` 的 `TRANSLATE_WORKER_URL` /
+  `TRANSLATE_SITE_KEY` 常數，前端原始碼本來就會被看到）；真正的保護是
+  **Google API 金鑰只存在 Worker 的加密 Secret**，不進前端、不進 repo
+- Worker 限制：單次最多 30 筆、單筆最多 500 字元、CORS 僅限本站來源
+- **踩過的坑**：Cloudflare 新版 Dashboard 加 Secret 後**不會自動上線**，
+  必須到 Deployments 分頁手動「Promote version」新版本才會生效
+  （否則會一直卡在舊版本回 401 unauthorized，即使 Settings 顯示 Secret 已存在）
+- 此功能**只用在 index.html（故障系統）**，`domain.html` 介面本身就是英文、不需要
+
+**版型雙軌同步規則再次提醒**：本次接 desc_en 時發現先前 `gen_word_report.py`
+的多單位改版（GROUPS_BY_UNIT / 日期列加「作業單位」字樣 / 74G75G 標題改「全部車輛」）
+沒有同步進 `report_gen.js`，已一併補上並重新位元組比對三單位通過。
+**任何改 `build_doc()` 的人，務必同時改 `buildDocumentXml()`，並跑位元組比對。**
 
 ---
 
