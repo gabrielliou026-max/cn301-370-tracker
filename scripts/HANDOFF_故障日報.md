@@ -48,7 +48,7 @@ service cloud.firestore {
 
 | 部分 | 說明 |
 |---|---|
-| **追蹤網站** | `index.html` 單檔，GitHub Pages 部署（main 分支），多人即時填報故障 |
+| **追蹤網站** | `index.html` 單檔，GitHub Pages 部署（main 分支經 GitHub Actions 建置，見第 10 節），多人即時填報故障 |
 | **日報腳本** | `scripts/gen_word_report.py`，抓 Firestore 產 Word 故障日報（中英對照） |
 | **入網域追蹤** | `domain.html`（2026-07-18 新增），74G/75G 各車元件加入網域進度，全英文；
   獨立 collection `domainProgress`，網址 `?unit=74G`/`?unit=75G` |
@@ -320,16 +320,58 @@ python3 gen_word_report.py
 
 ---
 
-## 10. Git 資訊
+## 10. 建置與部署 (Build & Deploy)（2026-08-18 新增）
+
+**背景**：`index.html` / `domain.html` / `report_gen.js` 原始碼含大量中文開發註解，
+`scripts/`（Python 腳本、交接文件）與 `worker/`（Cloudflare Worker 原始碼、部署說明）
+在「main 直接當 GitHub Pages 網站根目錄」的舊架構下，任何人打開 view-source 或直接
+打 URL（如 `/scripts/HANDOFF_故障日報.md`、`/worker/translate-worker.js`）都能看到，
+曝露內部架構細節與維運文件。**現在改成「開發版 / 正式版分離」**：
+
+| | 開發版（main 分支原始碼） | 正式版（GitHub Pages 實際上線內容） |
+|---|---|---|
+| 內容 | 完整中文註解、`scripts/`、`worker/` 等內部文件全都在 | 只有網站需要的檔案，註解與空白已去除 |
+| 誰看得到 | 只有 repo 協作者（或看 git history） | 一般使用者（view-source 也看得到） |
+| 怎麼產生 | 就是你手動編輯的檔案 | `npm run build` 自動產生到 `dist/` |
+
+**運作方式**：
+1. 平常開發完全不用管這節——正常改 `index.html` / `domain.html` / `report_gen.js`，
+   註解照寫，push 到 `main` 即可。
+2. `.github/workflows/deploy.yml` 會在每次 push 到 `main` 時自動：
+   `npm ci` → `npm run build`（跑 `build/build.mjs`）→ 把產出的 `dist/` 部署到 GitHub Pages。
+3. `build/build.mjs` 做兩件事：
+   - 用 `html-minifier-terser`（HTML，含內嵌 `<script>`）與 `terser`（`report_gen.js`）
+     去除註解＋壓縮空白。**刻意關閉 `compress`/`mangle`**（只去註解，不改變數名、
+     不重組邏輯），避免動到任何行為，也維持 devtools 除錯時還讀得懂。
+   - 只複製「網站真正需要」的檔案到 `dist/`：`index.html`、`domain.html`、`report_gen.js`
+     （處理後）＋ `report_template.docx`、`zh_en.json`、`vendor/`、`rf.html`、`fics.html`
+     （原封不動）。**`scripts/`、`worker/`、`README.md` 等內部檔案不會被複製，不會上網**。
+4. **新增檔案給網站用時**：記得把檔名加進 `build/build.mjs` 的 `PASSTHROUGH`
+   （原封不動複製）或 `MINIFY_HTML`/`MINIFY_JS`（要去註解）清單，否則不會出現在正式版。
+5. `dist/` 是建置產物，不進 repo（`.gitignore` 已排除），本機想預覽正式版效果可跑
+   `npm install && npm run build` 後用任何靜態伺服器開 `dist/`。
+
+> ⚠️ **版型雙軌同步規則不受影響**：`build/build.mjs` 對 `report_gen.js` 只去註解
+> （`compress:false, mangle:false`），已驗證建置後的 `document.xml` 輸出與建置前
+> 逐位元組相同，不影響第 2 節那條「Python 版 / JS 版位元組一致」規則。
+
+> **必要的一次性設定**：GitHub repo → Settings → Pages → Build and deployment → Source，
+> 須從「Deploy from a branch」改成「**GitHub Actions**」，新架構才會生效
+> （這步只有 repo owner 能做，AI 無法代勞，且會直接影響正式站，需使用者親自確認並操作）。
+
+---
+
+## 11. Git 資訊
 
 - Repo: `gabrielliou026-max/cn301-370-tracker`
 - 開發分支: `claude/read-markdown-file-6whg0i`（每次合併後重置到最新 main 再開工）
-- 網站部署: `main` branch → GitHub Pages（單檔 `index.html`），**merge 到 main 即上線**
+- 網站部署: push 到 `main` → GitHub Actions 自動建置 `dist/` → 部署到 GitHub Pages
+  （見第 10 節；**merge 到 main 仍等於上線，只是中間多了自動去註解/過濾內部檔案這一步**）
 - 近期 PR：#11 網站優化 / #12 updatedBy / #13 人員選單 / #14 連續輸入修復 / #15 更新時間移頂端
 
 ---
 
-## 11. 常見後續任務
+## 12. 常見後續任務
 
 - **產今日報告**：`cd scripts && python3 gen_word_report.py`
 - **比對昨晚 vs 現在**：跑 `compare_report.py`，或重新解析 PDF 基準
@@ -340,7 +382,7 @@ python3 gen_word_report.py
 
 ---
 
-## 12. 給新對話的開場提示 (建議貼這段)
+## 13. 給新對話的開場提示 (建議貼這段)
 
 > 我在維護 73G/74G/75G 三單位故障追蹤系統：網站 `index.html`（GitHub Pages，`?unit=` 切換單位）＋
 > 日報腳本 `scripts/gen_word_report.py`（從 Firestore `faultData` 抓 73G 57 台車資料產 Word 報告）。
