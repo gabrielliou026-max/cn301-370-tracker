@@ -1,0 +1,13 @@
+{
+  "name": "cn301-370-tracker-build",
+  "private": true,
+  "description": "建置工具：把 main 分支的開發版原始碼（含中文註解）處理成正式版靜態網站，供 GitHub Actions 部署用。開發時不用管這個檔案，正常改 index.html/domain.html/report_gen.js 即可，push 後自動建置。",
+  "type": "module",
+  "scripts": {
+    "build": "node build/build.mjs"
+  },
+  "devDependencies": {
+    "html-minifier-terser": "^7.2.0",
+    "terser": "^5.31.0"
+  }
+}
