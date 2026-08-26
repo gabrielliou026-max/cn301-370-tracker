@@ -128,7 +128,14 @@ Collection = faultData   (每個 doc = 一台車，doc id = 車號如 CN301)
   - `updatedAt`：最後儲存時間（ISO 8601）
   - `updatedBy`：最後儲存人員名字（2026-07-05 新增）
 - 故障項目（map 型態，key 為隨機 id 如 `f1782292280888zls`）：
-  `status`, `desc`, `person`(修復人員), `witness`(見證人)
+  `status`, `desc`, `person`(修復人員), `witness`(見證人),
+  `reportedAt`(回報時間，2026-08-26 新增), `reportedBy`(回報人員，2026-08-26 新增)
+
+> **`reportedAt`/`reportedBy`（2026-08-26 新增）**：只在該筆故障**第一次存檔**（前端 `_new`）
+> 時寫入一次，沿用當次存檔選的「更新人員」與存檔當下時間，**之後編輯不會再變動**
+> （`commitChanges()` 對非 `_new` 的編輯不寫這兩個欄位，靠 Firestore merge 保留原值，
+> 跟 `desc_en` 的保留邏輯同一套模式）。舊資料沒有這兩個欄位時網站不顯示，`gen_word_report.py`
+> 不需修改（字串型態自動略過）。
 
 > `gen_word_report.py` 以 `"mapValue" not in fval` 過濾欄位，
 > `updatedAt`/`updatedBy` 均為字串會自動略過，**腳本無需修改**。
@@ -290,6 +297,8 @@ python3 gen_word_report.py
 
 ### 填報流程
 - 每台車可多筆故障，欄位：狀態下拉 / 描述 / 修復人員 /（已修復時）見證人
+- 每筆故障第一次存檔時自動記一次「回報時間／回報人員」（沿用當次選的更新人員），
+  顯示在描述下方（📝 回報 …），不可手動修改，見第 3 節說明
 - **儲存需填更新人員**：確認視窗有下拉名單＋「其他 Other…」自訂輸入（必填、
   空白會被 `trim()` 擋下），名字記在 localStorage 下次自動帶入
 - 儲存寫入文件層級 `updatedBy` + `updatedAt`
@@ -377,8 +386,8 @@ python3 gen_word_report.py
 - **比對昨晚 vs 現在**：跑 `compare_report.py`，或重新解析 PDF 基準
 - **補翻譯**：見第 7 節流程
 - **調整輪次/排除車**：改 `gen_word_report.py` 的 `ROTATIONS`，與 `index.html` 的 `EXCLUDED` 保持一致
-- **進一步防護（可選）**：Google 登入＋email 白名單規則（建議）或匿名登入（防護有限）；
-  每筆故障加時間戳（使用者已知悉、暫緩）
+- **進一步防護（可選）**：Google 登入＋email 白名單規則（建議）或匿名登入（防護有限）
+  （每筆故障時間戳已於 2026-08-26 完成，見第 3 節 `reportedAt`/`reportedBy`）
 
 ---
 

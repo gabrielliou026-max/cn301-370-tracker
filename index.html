@@ -161,6 +161,11 @@
     vertical-align: 1px;
   }
 
+  .fi-meta {
+    font-size: 0.68rem; color: #94a3b8; font-weight: 400;
+    padding: 0 6px 4px; line-height: 1.4;
+  }
+
   .fi-person {
     flex-shrink: 0; width: 110px;
     border: 1px solid #e2e8f0; border-radius: 8px;
@@ -468,6 +473,11 @@ function escH(s) {
   return String(s || "").replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;").replace(/"/g,"&quot;");
 }
 function pad(n) { return String(n).padStart(2,"0"); }
+function fmtDT(iso) {
+  const d = new Date(iso);
+  if (isNaN(d.getTime())) return "";
+  return `${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())} ${pad(d.getHours())}:${pad(d.getMinutes())}`;
+}
 function autoResize(ta) { ta.style.height = "auto"; ta.style.height = ta.scrollHeight + "px"; }
 
 // ── 渲染 ──
@@ -534,13 +544,17 @@ function renderCarCell(car) {
     const enHtml = (showDetail && f.desc_en)
       ? `<div class="fi-desc-en">${escH(f.desc_en)}</div>`
       : "";
+    // 回報時間／回報人員：第一次存檔時自動記錄，不可更改；均完成不顯示描述時同樣不顯示
+    const metaHtml = (showDetail && f.reportedAt)
+      ? `<div class="fi-meta">📝 回報 ${fmtDT(f.reportedAt)}${f.reportedBy ? "　" + escH(f.reportedBy) : ""}</div>`
+      : "";
     return `<div class="fault-item${itemCls}" id="fi_${car}_${f.id}">
       <select class="fi-select ${cls}" onchange="updateFaultStatus('${car}','${f.id}',this)">${opts}</select>
       ${descHtml}
       ${personHtml}
       ${witnessHtml}
       <button class="fi-del-btn" onclick="removeFault('${car}','${f.id}')" title="刪除此筆">✕</button>
-    </div>${enHtml}`;
+    </div>${enHtml}${metaHtml}`;
   }).join("");
 
   // 尚未檢查的車顯示「均完成」快速鍵，一鍵完成清點
@@ -873,6 +887,13 @@ function commitChanges() {
       // 一併清掉雲端舊值（Firestore merge 對巢狀欄位可用刪除標記），
       // 避免顯示跟新描述對不上的過期英文，待背景自動翻譯補上新的
       if (!f.desc_en) data[f.id].desc_en = firebase.firestore.FieldValue.delete();
+      // 回報時間／回報人員：只在第一次存檔（_new）時記錄一次，之後編輯不再變動
+      if (f._new) {
+        f.reportedAt = now;
+        f.reportedBy = editor;
+        data[f.id].reportedAt = now;
+        data[f.id].reportedBy = editor;
+      }
     });
     faultList[car].filter(f => f._del && !f._new).forEach(f => {
       data[f.id] = firebase.firestore.FieldValue.delete();
@@ -1007,7 +1028,7 @@ function exportBackup() {
       const meta = cloudMeta[car] || {};
       out[car] = { updatedAt: meta.at || "", updatedBy: meta.by || "" };
       savedCloud[car].forEach(f => {
-        out[car][f.id] = { status: f.status, desc: f.desc, person: f.person || "", witness: f.witness || "" };
+        out[car][f.id] = { status: f.status, desc: f.desc, person: f.person || "", witness: f.witness || "", reportedAt: f.reportedAt || "", reportedBy: f.reportedBy || "" };
         count++;
       });
     }
@@ -1151,7 +1172,7 @@ db.collection("faultData").onSnapshot(snap => {
     const cloudItems = [];
     Object.entries(data).forEach(([id, val]) => {
       if (id === "updatedAt" || id === "updatedBy" || typeof val !== "object" || val === null) return;
-      cloudItems.push({ id, status: val.status || "待確認", desc: val.desc || "", desc_en: val.desc_en || "", person: val.person || "", witness: val.witness || "" });
+      cloudItems.push({ id, status: val.status || "待確認", desc: val.desc || "", desc_en: val.desc_en || "", person: val.person || "", witness: val.witness || "", reportedAt: val.reportedAt || "", reportedBy: val.reportedBy || "" });
     });
     // 依狀態排序：故障 → 維修中 → 待確認 → 已修復
     cloudItems.sort((a, b) => (STATUS_SORT[a.status] ?? 9) - (STATUS_SORT[b.status] ?? 9));
