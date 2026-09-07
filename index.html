@@ -1095,7 +1095,7 @@ async function generateReport(btn) {
   try {
     await loadScriptOnce("vendor/jszip.min.js");
     await loadScriptOnce("report_gen.js");
-    const r = await window.generateUnitReport(UNIT_ID, cars, savedCloud);
+    const r = await window.generateUnitReport(UNIT_ID, cars, savedCloud, PHASE);
     if (r.missing.length) {
       alert(`報告已下載。\n注意：${r.missing.length} 筆故障描述未收錄翻譯，英文欄將顯示原文，請通知管理者補充詞庫。`);
     }

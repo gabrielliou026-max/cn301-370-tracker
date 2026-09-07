@@ -146,8 +146,15 @@ Collection = faultData   (每個 doc = 一台車，doc id = 車號如 CN301)
   即時翻譯、逐欄位寫入邏輯全部沿用同一套程式碼，只是 collection 名稱依 `PHASE`
   常數切換（`index.html` 的 `FAULT_COLLECTION`）
 - Firestore 規則已於 2026-09-07 加開 `faultDataAfter`（見第 0 節上方），已確認生效
-- 日報腳本 `gen_word_report.py` 不受影響（仍只讀 `faultData`），DT&E 檢查資料目前
-  沒有對應的 Word 報告產生功能（如需要要另外開發）
+- **「📄 報告 Report」按鈕已支援 DT&E 檢查（2026-09-07 新增）**：`generateReport()` 多傳一個
+  `PHASE` 給 `window.generateUnitReport(unitId, cars, savedCloud, phase)`，`report_gen.js`
+  的 `buildDocumentXml()` 收到 `phase="after"` 時在日期列多加「｜　DT&E 檢查」字樣，
+  下載檔名也加 `_DTE檢查` 區別（`故障日報_75G_DTE檢查_2026-09-07.docx`），避免同一天
+  操課前／DT&E 兩份報告檔名相同互相覆蓋。**`phase` 參數預設 `"before"`**，不傳等同原本行為，
+  73G／操課前報告輸出**逐位元組不變**（已驗證），不影響與 Python 版的同步規則
+- 日報腳本 `gen_word_report.py` 仍不受影響（只讀 `faultData`，只產 73G）；DT&E 檢查目前
+  只有網頁版能產報告，跟 74G/75G 操課前報告一樣沒有對應的 Python CLI 產製方式
+  （如需要批次/排程產出才需要另外擴充 Python 腳本）
 
 **文件結構**（每個 doc = 一台車）：
 - 文件層級欄位（字串，**解析時需略過**）：
