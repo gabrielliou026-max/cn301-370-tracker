@@ -27,11 +27,11 @@ service cloud.firestore {
 }
 ```
 
-- `faultData`：73G/74G/75G「使用前」故障追蹤（三單位共用同一個 collection，見第 3 節）
+- `faultData`：73G/74G/75G「操課前檢查」故障追蹤（三單位共用同一個 collection，見第 3 節）
 - `domainProgress`：74G/75G 入網域進度追蹤（`domain.html`，2026-07-18 開通）
-- `faultDataAfter`：74G/75G「使用後」故障追蹤（`index.html?phase=after`，**2026-09-07 新增，
-  上線前務必先手動到 Firebase Console → Firestore → 規則加上這條，否則存檔會被規則擋掉、
-  網站顯示「連線失敗」**；結構與 `faultData` 完全相同，只是分開存放）
+- `faultDataAfter`：74G/75G「DT&E 檢查」故障追蹤（`index.html?phase=after`，**2026-09-07 新增，
+  已於同日發布規則生效**；結構與 `faultData` 完全相同，只是分開存放。網址參數/程式碼內部
+  變數仍叫 `phase=after`／`PHASE`，只有網站上顯示的中文標籤改叫「DT&E 檢查」）
 - 更新規則前建議先按網站「📥 備份」下載 JSON 快照
 - 資料庫另有 `carStatus`、`missionOps` 兩個 collection，已被此規則封鎖
   （2026-07-06 使用者確認只開必要路徑；若日後有工具壞掉，到 Console 規則加開即可）
@@ -132,17 +132,21 @@ Collection = faultData   (每個 doc = 一台車，doc id = 車號如 CN301)
 - 日報腳本 `pageSize=200`：三單位全掛滿約 137 docs，仍在上限內；再擴充需注意分頁
 - **日報腳本目前只產 73G**（`ROTATIONS` 只列 73G 車；74G/75G 的 docs 抓下來但不會出現在報告）
 
-**使用前／使用後（2026-09-07 新增，僅 74G/75G）**：
-- 74G/75G 車輛除了原本的「使用前」故障追蹤，另加一組「使用後」記錄，
+**操課前檢查／DT&E 檢查（2026-09-07 新增，僅 74G/75G）**：
+- 74G/75G 車輛除了原本的「操課前檢查」故障追蹤，另加一組「DT&E 檢查」記錄，
   網址加 `&phase=after`（如 `?unit=75G&phase=after`），頁面上方會多一排
-  [使用前 Before Use] / [使用後 After Use] 切換頁籤（73G 不顯示，永遠只有使用前）
-- **資料完全分開存放**：使用前寫 `faultData`（不變），使用後寫**另一個 collection
-  `faultDataAfter`**，doc 結構、欄位（含 `reportedAt`/`reportedBy`）、即時翻譯、
-  逐欄位寫入邏輯全部沿用同一套程式碼，只是 collection 名稱依 `PHASE` 常數切換
-  （`index.html` 的 `FAULT_COLLECTION`）
-- **⚠️ 上線前必看第 0 節上方的 Firestore 規則**：`faultDataAfter` 是新 collection，
-  沒加規則會被擋掉、網站顯示連線失敗
-- 日報腳本 `gen_word_report.py` 不受影響（仍只讀 `faultData`），使用後資料目前
+  [操課前檢查 Pre-Exercise Check] / [DT&E 檢查 DT&E Check] 切換頁籤
+  （73G 不顯示，永遠只有操課前檢查）
+- **內部命名沿用 before/after**：URL 參數 `phase=after`、程式碼變數 `PHASE`／
+  `PHASE_UNITS` 都還是英文 before/after，**只有網站上顯示給使用者看的中文標籤**
+  改叫「操課前檢查」「DT&E 檢查」，之後改文案只需要改 `index.html` 裡
+  `phaseBeforeLink`/`phaseAfterLink`/`PHASE_LABEL` 那幾處顯示文字，不用動邏輯
+- **資料完全分開存放**：操課前檢查寫 `faultData`（不變），DT&E 檢查寫**另一個
+  collection `faultDataAfter`**，doc 結構、欄位（含 `reportedAt`/`reportedBy`）、
+  即時翻譯、逐欄位寫入邏輯全部沿用同一套程式碼，只是 collection 名稱依 `PHASE`
+  常數切換（`index.html` 的 `FAULT_COLLECTION`）
+- Firestore 規則已於 2026-09-07 加開 `faultDataAfter`（見第 0 節上方），已確認生效
+- 日報腳本 `gen_word_report.py` 不受影響（仍只讀 `faultData`），DT&E 檢查資料目前
   沒有對應的 Word 報告產生功能（如需要要另外開發）
 
 **文件結構**（每個 doc = 一台車）：

@@ -68,7 +68,7 @@
   .unit-tabs a:hover { border-color: #2d4a8a; color: #2d4a8a; }
   .unit-tabs a.active { background: #1a2f5e; color: white; border-color: #1a2f5e; }
 
-  /* 使用前／使用後切換（僅 74G/75G 顯示）：跟單位頁籤同風格，換一個強調色區分 */
+  /* 操課前檢查／DT&E 檢查切換（僅 74G/75G 顯示）：跟單位頁籤同風格，換一個強調色區分 */
   .phase-tabs { padding-top: 0; border-bottom: 1px solid #dde3ed; }
   .phase-tabs a.active { background: #0e7490; border-color: #0e7490; }
 
@@ -349,8 +349,8 @@
 </nav>
 
 <nav class="unit-tabs phase-tabs" id="phaseTabs" style="display:none">
-  <a href="#" data-phase="before" id="phaseBeforeLink">🔹 使用前 Before Use</a>
-  <a href="#" data-phase="after" id="phaseAfterLink">🔸 使用後 After Use</a>
+  <a href="#" data-phase="before" id="phaseBeforeLink">🔹 操課前檢查 Pre-Exercise Check</a>
+  <a href="#" data-phase="after" id="phaseAfterLink">🔸 DT&amp;E 檢查 DT&amp;E Check</a>
 </nav>
 
 <div class="summary-bar">
@@ -453,13 +453,13 @@ const UNIT = UNITS[UNIT_ID];
 const cars = UNIT.cars;
 const TOTAL = cars.length;
 
-// 使用前／使用後：目前僅 74G/75G 有「使用後」檢查紀錄，73G 一律視為使用前
+// 操課前檢查／DT&E 檢查：目前僅 74G/75G 有「DT&E 檢查」紀錄，73G 一律視為操課前檢查
 const PHASE_UNITS = new Set(["74G", "75G"]);
 const PHASE = (() => {
   if (!PHASE_UNITS.has(UNIT_ID)) return "before";
   return new URLSearchParams(location.search).get("phase") === "after" ? "after" : "before";
 })();
-// 使用後資料另存一個 collection，跟使用前紀錄完全分開，不共用車廂文件
+// DT&E 檢查資料另存一個 collection，跟操課前檢查紀錄完全分開，不共用車廂文件
 const FAULT_COLLECTION = PHASE === "after" ? "faultDataAfter" : "faultData";
 
 const STATUS_OPTS = [
@@ -1029,7 +1029,7 @@ function persistDescEn(entries) {
 }
 
 // ── 單位切換 UI 初始化 ──
-const PHASE_LABEL = PHASE === "after" ? "（使用後 After Use）" : "";
+const PHASE_LABEL = PHASE === "after" ? "（DT&E 檢查）" : "";
 document.title = `${UNIT_ID} 故障追蹤系統${PHASE_LABEL}`;
 document.getElementById("unitTitle").textContent = UNIT.title + PHASE_LABEL;
 document.getElementById("unitSubtitle").textContent =
@@ -1038,7 +1038,7 @@ document.getElementById("statTotal").textContent = TOTAL;
 document.querySelectorAll(".unit-tabs:not(.phase-tabs) a").forEach(a =>
   a.classList.toggle("active", a.dataset.unit === UNIT_ID));
 
-// 使用前／使用後切換頁籤：僅 74G/75G 顯示，連結帶入目前單位、切換 phase 參數
+// 操課前檢查／DT&E 檢查切換頁籤：僅 74G/75G 顯示，連結帶入目前單位、切換 phase 參數
 if (PHASE_UNITS.has(UNIT_ID)) {
   document.getElementById("phaseTabs").style.display = "";
   document.getElementById("phaseBeforeLink").href = `?unit=${UNIT_ID}`;
