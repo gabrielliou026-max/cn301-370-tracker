@@ -68,6 +68,10 @@
   .unit-tabs a:hover { border-color: #2d4a8a; color: #2d4a8a; }
   .unit-tabs a.active { background: #1a2f5e; color: white; border-color: #1a2f5e; }
 
+  /* 使用前／使用後切換（僅 74G/75G 顯示）：跟單位頁籤同風格，換一個強調色區分 */
+  .phase-tabs { padding-top: 0; border-bottom: 1px solid #dde3ed; }
+  .phase-tabs a.active { background: #0e7490; border-color: #0e7490; }
+
   .progress-wrap { padding: 0 28px 14px; background: white; border-bottom: 1px solid #dde3ed; }
   .progress-track { height: 10px; background: #e2e8f0; border-radius: 6px; overflow: hidden; margin-top: 2px; }
   .progress-fill { height: 100%; background: linear-gradient(90deg, #16a34a, #22c55e); border-radius: 6px; transition: width 0.5s ease; }
@@ -344,6 +348,11 @@
   <a href="?unit=75G" data-unit="75G">75G</a>
 </nav>
 
+<nav class="unit-tabs phase-tabs" id="phaseTabs" style="display:none">
+  <a href="#" data-phase="before" id="phaseBeforeLink">🔹 使用前 Before Use</a>
+  <a href="#" data-phase="after" id="phaseAfterLink">🔸 使用後 After Use</a>
+</nav>
+
 <div class="summary-bar">
   <div class="stat-card s-total" onclick="setFilter(null)" title="顯示全部"><div class="num" id="statTotal">57</div><div class="lbl">總台數<br>Total</div></div>
   <div class="stat-card s-unchecked" onclick="setFilter('unchecked')" title="點擊篩選"><div class="num" id="statUnchecked">0</div><div class="lbl">尚未檢查<br>Unchecked</div></div>
@@ -443,6 +452,15 @@ const UNIT_ID = (() => {
 const UNIT = UNITS[UNIT_ID];
 const cars = UNIT.cars;
 const TOTAL = cars.length;
+
+// 使用前／使用後：目前僅 74G/75G 有「使用後」檢查紀錄，73G 一律視為使用前
+const PHASE_UNITS = new Set(["74G", "75G"]);
+const PHASE = (() => {
+  if (!PHASE_UNITS.has(UNIT_ID)) return "before";
+  return new URLSearchParams(location.search).get("phase") === "after" ? "after" : "before";
+})();
+// 使用後資料另存一個 collection，跟使用前紀錄完全分開，不共用車廂文件
+const FAULT_COLLECTION = PHASE === "after" ? "faultDataAfter" : "faultData";
 
 const STATUS_OPTS = [
   { value: "均完成",    label: "✓ 均完成 All Clear",       cls: "f-done"    },
@@ -877,7 +895,7 @@ function commitChanges() {
     const hasChange = faultList[car].some(f => !f._default && (f._new || f._dirty || f._del));
     if (!hasChange) return;
     carsChanged.add(car);
-    const ref = db.collection("faultData").doc(car);
+    const ref = db.collection(FAULT_COLLECTION).doc(car);
     const data = { updatedAt: now, updatedBy: editor };
     // 只寫入「有改動」的項目（_new 或 _dirty）；未改動的項目不送，
     // 靠 merge:true 保留雲端版本，避免蓋掉別人同時修改的其他項目
@@ -1005,23 +1023,33 @@ function persistDescEn(entries) {
   const byCar = {};
   entries.forEach(({ car, id, en }) => { (byCar[car] = byCar[car] || {})[id] = { desc_en: en }; });
   Object.entries(byCar).forEach(([car, data]) => {
-    batch.set(db.collection("faultData").doc(car), data, { merge: true });
+    batch.set(db.collection(FAULT_COLLECTION).doc(car), data, { merge: true });
   });
   batch.commit().catch(err => console.warn("翻譯結果寫回失敗", err));
 }
 
 // ── 單位切換 UI 初始化 ──
-document.title = `${UNIT_ID} 故障追蹤系統`;
-document.getElementById("unitTitle").textContent = UNIT.title;
+const PHASE_LABEL = PHASE === "after" ? "（使用後 After Use）" : "";
+document.title = `${UNIT_ID} 故障追蹤系統${PHASE_LABEL}`;
+document.getElementById("unitTitle").textContent = UNIT.title + PHASE_LABEL;
 document.getElementById("unitSubtitle").textContent =
   `作業單位 Unit：${UNIT_ID}　｜　車廂數量 Total：${TOTAL} units`;
 document.getElementById("statTotal").textContent = TOTAL;
-document.querySelectorAll(".unit-tabs a").forEach(a =>
+document.querySelectorAll(".unit-tabs:not(.phase-tabs) a").forEach(a =>
   a.classList.toggle("active", a.dataset.unit === UNIT_ID));
+
+// 使用前／使用後切換頁籤：僅 74G/75G 顯示，連結帶入目前單位、切換 phase 參數
+if (PHASE_UNITS.has(UNIT_ID)) {
+  document.getElementById("phaseTabs").style.display = "";
+  document.getElementById("phaseBeforeLink").href = `?unit=${UNIT_ID}`;
+  document.getElementById("phaseAfterLink").href = `?unit=${UNIT_ID}&phase=after`;
+  document.querySelectorAll(".phase-tabs a").forEach(a =>
+    a.classList.toggle("active", a.dataset.phase === PHASE));
+}
 
 // ── 匯出雲端資料備份 (JSON，僅本單位車輛) ──
 function exportBackup() {
-  const out = { _meta: { exportedAt: new Date().toISOString(), collection: "faultData", unit: UNIT_ID } };
+  const out = { _meta: { exportedAt: new Date().toISOString(), collection: FAULT_COLLECTION, unit: UNIT_ID, phase: PHASE } };
   let count = 0;
   cars.forEach(car => {
     if (savedCloud[car] && savedCloud[car].length > 0) {
@@ -1035,7 +1063,8 @@ function exportBackup() {
   });
   if (count === 0 && !confirm("目前尚未載入任何雲端資料，仍要匯出空備份嗎？\nNo cloud data loaded yet. Export empty backup?")) return;
   const now = new Date();
-  const name = `faultData_backup_${UNIT_ID}_${now.getFullYear()}-${pad(now.getMonth()+1)}-${pad(now.getDate())}_${pad(now.getHours())}${pad(now.getMinutes())}.json`;
+  const phaseSuffix = PHASE === "after" ? "_after" : "";
+  const name = `faultData_backup_${UNIT_ID}${phaseSuffix}_${now.getFullYear()}-${pad(now.getMonth()+1)}-${pad(now.getDate())}_${pad(now.getHours())}${pad(now.getMinutes())}.json`;
   const blob = new Blob([JSON.stringify(out, null, 2)], { type: "application/json" });
   const a = document.createElement("a");
   a.href = URL.createObjectURL(blob);
@@ -1156,7 +1185,7 @@ firebase.initializeApp({
 });
 const db = firebase.firestore();
 
-db.collection("faultData").onSnapshot(snap => {
+db.collection(FAULT_COLLECTION).onSnapshot(snap => {
   const changedCars = [];
   // 只處理本次快照有變動的文件，而非全部重讀
   snap.docChanges().forEach(change => {
