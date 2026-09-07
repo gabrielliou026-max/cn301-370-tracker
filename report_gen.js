@@ -98,13 +98,16 @@
   // ── document.xml 組裝（對應 build_doc(active_only=False)）──
   const UNIT_TITLES = { "73G": "CN301-370", "74G": "CN501-546", "75G": "CN401-446" };
 
-  function buildDocumentXml(rotations, faultData, zhEn, today, unitId) {
+  function buildDocumentXml(rotations, faultData, zhEn, today, unitId, phase = "before") {
     const parts = [PREFIX];
 
     // 標題與日期
     parts.push(paraSpacingFirst(run("DT&E 故障日報 Daily Fault Report", { b: 1, color: NAVY, sz: 36 }), "center"));
     const unitTitle = UNIT_TITLES[unitId] || unitId;
-    parts.push(paraSpacingFirst(run(`日期 Date：${today}　｜　作業單位 Unit：${unitId}（${unitTitle}）`, { color: "445566", sz: 20 }), "center"));
+    // phase 預設 before，輸出跟原本一致（維持與 Python 版位元組同步）；
+    // after（DT&E 檢查）才多加一段標示，避免跟操課前報告搞混
+    const phaseSuffix = phase === "after" ? "　｜　DT&E 檢查" : "";
+    parts.push(paraSpacingFirst(run(`日期 Date：${today}　｜　作業單位 Unit：${unitId}（${unitTitle}）${phaseSuffix}`, { color: "445566", sz: 20 }), "center"));
 
     // 摘要
     const scopeCars = rotations.flatMap(r => r[1]);
@@ -217,7 +220,7 @@
     return out;
   }
 
-  window.generateUnitReport = async function (unitId, cars, savedCloud) {
+  window.generateUnitReport = async function (unitId, cars, savedCloud, phase = "before") {
     await fetchOnce();
     const pad = n => String(n).padStart(2, "0");
     const now = new Date();
@@ -225,7 +228,7 @@
 
     const rotations = unitId === "73G" ? ROTATIONS_73G : [["全部車輛 All Cars", cars]];
     const faultData = toFaultData(rotations.flatMap(r => r[1]), savedCloud);
-    const xml = buildDocumentXml(rotations, faultData, _zhEn, today, unitId);
+    const xml = buildDocumentXml(rotations, faultData, _zhEn, today, unitId, phase);
 
     const zip = await JSZip.loadAsync(_tmplBuf.slice(0));
     zip.file("word/document.xml", xml);
@@ -236,7 +239,9 @@
     });
     const a = document.createElement("a");
     a.href = URL.createObjectURL(blob);
-    a.download = `故障日報_${unitId}_${today}.docx`;
+    // 檔名加上 phase 區別，避免同一天操課前／DT&E 檢查兩份報告互相覆蓋
+    const phaseTag = phase === "after" ? "_DTE檢查" : "";
+    a.download = `故障日報_${unitId}${phaseTag}_${today}.docx`;
     document.body.appendChild(a);
     a.click();
     a.remove();
