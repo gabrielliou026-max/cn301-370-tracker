@@ -1,8 +1,9 @@
 # DT&E 故障日報 & 追蹤網站 — 專案交接文件 (Handoff)
 
-> 這份文件用於把「故障追蹤網站（73G/74G/75G 三單位）+ DT&E 故障日報」維護工作轉移到新的對話框。
+> 這份文件用於把「故障追蹤網站（目前 74G/75G 兩單位，73G 已於 2026-09-11 下架）+ DT&E 故障日報」
+> 維護工作轉移到新的對話框。
 > 貼上或附上此檔給新對話，即可無縫接手。
-> 最後更新：2026-09-07
+> 最後更新：2026-09-11
 
 ---
 
@@ -118,19 +119,32 @@ Collection = faultData   (每個 doc = 一台車，doc id = 車號如 CN301)
 
 **抓取方式**：REST API，`GET {BASE_URL}/faultData?key={API_KEY}&pageSize=200`
 
-**⚠️ 三單位共用同一個 `faultData` collection（2026-07-07 起）**：
-73G/74G/75G 的車在同一 collection，以車號（doc id）區分，範圍互不重疊：
+**⚠️ 73G/74G/75G 共用同一個 `faultData` collection（2026-07-07 起）**：
+三單位的車在同一 collection，以車號（doc id）區分，範圍互不重疊：
 
 | 單位 | 車號範圍 | 台數 | 網址 |
 |---|---|---|---|
-| 73G | CN301–370（扣 EXCLUDED 16 台）＋ NMS381/382/383 | 57 | 預設或 `?unit=73G` |
-| 74G | CN501–514, 519–531, 536–546 ＋ NMS581/582 | 40 | `?unit=74G` |
+| ~~73G~~ | CN301–370（扣 EXCLUDED 16 台）＋ NMS381/382/383 | 57 | **2026-09-11 已下架，網站不再提供**（見下方） |
+| 74G | CN501–514, 519–531, 536–546 ＋ NMS581/582 | 40 | 預設或 `?unit=74G` |
 | 75G | CN401–414, 419–431, 436–446 ＋ NMS481/482 | 40 | `?unit=75G` |
 
 - 如此設計是因現行規則只開放 `faultData`，共用可免改規則
 - **新增單位/車輛時務必確認車號不與其他單位重複**（`index.html` 的 `UNITS` 設定）
 - 日報腳本 `pageSize=200`：三單位全掛滿約 137 docs，仍在上限內；再擴充需注意分頁
-- **日報腳本目前只產 73G**（`ROTATIONS` 只列 73G 車；74G/75G 的 docs 抓下來但不會出現在報告）
+- **日報腳本目前只產 73G**（`ROTATIONS` 只列 73G 車），**網站下架後這是唯一還能產 73G
+  報告的管道**：`cd scripts && python3 gen_word_report.py`（74G/75G 的 docs 抓下來但
+  不會出現在這支腳本的報告，一直都是這樣，與這次下架無關）
+
+**⚠️ 73G 網站下架（2026-09-11）**：
+- `index.html` 的 `UNITS` 設定**移除了 `"73G"` 這個 key**，`.unit-tabs` 也拿掉 73G 頁籤
+- 網址 `?unit=73G`（或任何無效值、不帶參數）現在一律 fallback 到 **74G**（原本 fallback 是 73G）
+- **Firestore 裡 73G 的 57 台車資料完全沒刪，只是網站不再顯示/不能編輯**；
+  之後如果要恢復，把 `UNITS` 加回 `"73G": { title: ..., cars: [...] }`、`.unit-tabs` 加回
+  73G 的 `<a>`、fallback 改回 73G 即可，**資料會直接接得上**（onSnapshot 一樣讀得到）
+- `EXCLUDED` 那個 16 台車排除清單原本只給 73G 用，**已隨 73G 一起從 `index.html` 移除**；
+  如果要恢復 73G，記得把 `EXCLUDED` 也加回來（可從 git log 找到移除前的版本）
+- Python 日報腳本 `gen_word_report.py`、`report_gen.js` 裡的 `ROTATIONS_73G` **維持不動**，
+  73G 的報告產製能力（僅限 Python CLI，網站按鈕已經點不到）刻意保留
 
 **操課前檢查／DT&E 檢查（2026-09-07 新增，僅 74G/75G）**：
 - 74G/75G 車輛除了原本的「操課前檢查」故障追蹤，另加一組「DT&E 檢查」記錄，
@@ -322,11 +336,11 @@ python3 gen_word_report.py
   該車一旦被編輯，選單即時切為待確認、快速鍵消失（`defaultTouched()`）
 - `carCategory()` 判斷順序：無真實紀錄→unchecked；全為均完成/已修復→done；再依故障/維修中/待確認
 
-### 單位切換（2026-07-07 新增）
-- header 下方 [73G] [74G] [75G] 頁籤，網址參數 `?unit=74G`，無參數/亂填預設 73G
+### 單位切換（2026-07-07 新增；73G 已於 2026-09-11 下架，見第 3 節）
+- header 下方目前只有 [74G] [75G] 頁籤，網址參數 `?unit=74G`，無參數/亂填預設 74G
 - 每單位獨立車廂清單、標題、統計、備份檔（`faultData_backup_74G_….json`）
 - 74G/75G 暫不分輪次；74G/75G 沒有 EXCLUDED 概念（範圍縮排即排除）
-- 見證人/更新人員名單三單位目前共用 `WITNESS_NAMES`，如需分單位再拆
+- 見證人/更新人員名單目前共用 `WITNESS_NAMES`，如需分單位再拆
 
 ### 填報流程
 - 每台車可多筆故障，欄位：狀態下拉 / 描述 / 修復人員 /（已修復時）見證人
@@ -426,7 +440,8 @@ python3 gen_word_report.py
 
 ## 13. 給新對話的開場提示 (建議貼這段)
 
-> 我在維護 73G/74G/75G 三單位故障追蹤系統：網站 `index.html`（GitHub Pages，`?unit=` 切換單位）＋
-> 日報腳本 `scripts/gen_word_report.py`（從 Firestore `faultData` 抓 73G 57 台車資料產 Word 報告）。
+> 我在維護故障追蹤系統：網站 `index.html`（GitHub Pages，74G/75G 兩單位，`?unit=` 切換，
+> 73G 已於 2026-09-11 下架不再提供網站存取，但資料還在）＋日報腳本 `scripts/gen_word_report.py`
+> （從 Firestore `faultData` 抓 73G 57 台車資料產 Word 報告，仍可正常使用）。
 > 請先讀 repo 裡的 `scripts/HANDOFF_故障日報.md` 交接文件並遵守其資料保護規則。
 > 今天請幫我：〔在此填入需求，例如「產今日報告並補齊翻譯」〕
