@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>CN301-370 故障追蹤系統</title>
+<title>DT&E 故障追蹤系統</title>
 <style>
   :root { color-scheme: light; }
   * { box-sizing: border-box; margin: 0; padding: 0; }
@@ -334,8 +334,8 @@
 <header>
   <div style="font-size:2rem;">🚃</div>
   <div class="title-block">
-    <h1><span id="unitTitle">CN301-370 故障追蹤系統</span> <span class="en">Fault Tracking System</span></h1>
-    <p id="unitSubtitle">作業單位 Unit：73G　｜　車廂數量 Total：57 units</p>
+    <h1><span id="unitTitle">CN501-546 故障追蹤系統</span> <span class="en">Fault Tracking System</span></h1>
+    <p id="unitSubtitle">作業單位 Unit：74G　｜　車廂數量 Total：40 units</p>
   </div>
   <div class="badge" id="headerDate">載入中…</div>
   <button class="export-btn" onclick="exportBackup()" title="下載目前單位雲端資料的 JSON 備份">📥 備份 Backup</button>
@@ -343,7 +343,6 @@
 </header>
 
 <nav class="unit-tabs">
-  <a href="?unit=73G" data-unit="73G">73G</a>
   <a href="?unit=74G" data-unit="74G">74G</a>
   <a href="?unit=75G" data-unit="75G">75G</a>
 </nav>
@@ -420,22 +419,19 @@
 </div>
 
 <footer>
-  CN301-370 Fault Tracking System　｜　CN301-370 故障追蹤系統　｜
+  DT&amp;E Fault Tracking System　｜　DT&amp;E 故障追蹤系統　｜
   Last Updated 最後更新：<span id="footerUpdated">-</span>
 </footer>
 
 <script>
 // ── 單位設定 ──
-// 三單位共用同一個 faultData collection（doc id = 車號），
-// 車號範圍互不重疊（73G: 301-370/NMS38x, 74G: 501-546/NMS58x, 75G: 401-446/NMS48x），
-// 因此無需修改 Firestore 規則即可隔離。新增單位時務必確認車號不與現有單位重複。
+// 共用同一個 faultData collection（doc id = 車號），車號範圍互不重疊
+// （74G: 501-546/NMS58x, 75G: 401-446/NMS48x），因此無需修改 Firestore 規則即可隔離。
+// 新增單位時務必確認車號不與現有單位重複。
+// 2026-09-11：73G（CN301-370）已下架，不再提供頁籤／網址存取；
+// 舊資料仍完整保留在 faultData collection，未刪除，Python 日報腳本仍可正常產出。
 function carRange(a, b) { return Array.from({length: b - a + 1}, (_, i) => `CN${a + i}`); }
-const EXCLUDED = new Set(["CN315","CN316","CN317","CN318","CN332","CN333","CN334","CN335","CN349","CN350","CN351","CN352","CN365","CN366","CN367","CN368"]); // 73G 專用
 const UNITS = {
-  "73G": {
-    title: "CN301-370 故障追蹤系統",
-    cars: ["NMS381","NMS382","NMS383", ...carRange(301, 370).filter(c => !EXCLUDED.has(c))],  // 57
-  },
   "74G": {
     title: "CN501-546 故障追蹤系統",
     cars: ["NMS581","NMS582", ...carRange(501, 514), ...carRange(519, 531), ...carRange(536, 546)],  // 40
@@ -446,14 +442,14 @@ const UNITS = {
   },
 };
 const UNIT_ID = (() => {
-  const u = new URLSearchParams(location.search).get("unit") || "73G";
-  return UNITS[u] ? u : "73G";
+  const u = new URLSearchParams(location.search).get("unit") || "74G";
+  return UNITS[u] ? u : "74G";
 })();
 const UNIT = UNITS[UNIT_ID];
 const cars = UNIT.cars;
 const TOTAL = cars.length;
 
-// 操課前檢查／DT&E 檢查：目前僅 74G/75G 有「DT&E 檢查」紀錄，73G 一律視為操課前檢查
+// 操課前檢查／DT&E 檢查：目前僅 74G/75G 有「DT&E 檢查」紀錄
 const PHASE_UNITS = new Set(["74G", "75G"]);
 const PHASE = (() => {
   if (!PHASE_UNITS.has(UNIT_ID)) return "before";
