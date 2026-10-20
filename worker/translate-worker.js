@@ -29,6 +29,12 @@
  *   → 回到這個 Worker → Settings → Bindings → Add → KV Namespace
  *   → Variable name 填 USAGE_KV，選剛建立的命名空間 → Deploy
  * 未綁定 KV 時此限制不生效（向下相容，但強烈建議設定）。
+ *
+ * ── 專有名詞修正（2026-10-20 新增）──────────────────────────────────
+ * Google 翻譯不懂車輛維修術語，常把「無線電機」逐字翻成 wireless/motor。
+ * TERM_FIXES（見下方）會在拿到 Google 的翻譯結果後，依原文（中文）比對，
+ * 命中時對英文輸出做字詞修正。新增詞彙時比照既有項目格式加進 TERM_FIXES 即可，
+ * 不需要改動其他邏輯。
  */
 
 // 只允許從故障追蹤網站呼叫（依你的 GitHub Pages 網址調整）
@@ -37,6 +43,34 @@ const ALLOWED_ORIGIN = "https://gabrielliou026-max.github.io";
 const MAX_TEXTS = 30;         // 單次請求最多幾筆，避免異常請求拉爆用量
 const MAX_CHARS = 500;        // 單筆文字最多字元數
 const DAILY_CHAR_CAP = 20000; // 每日翻譯字元總量上限（遠高於正常用量，但足以擋住整篇文件翻譯）
+
+// 專有名詞修正：Google 不懂車輛維修術語時的逐字誤譯，依原文（中文）命中條件
+// 比對，命中才對英文輸出做字詞取代。zhExclude 用來排除「原文其實是別的詞」
+// 的情況（例如無線AP/無線基地台本來就該翻成 wireless，不該被這條規則改到）。
+// fixes 由上而下依序比對，愈精確的樣式放愈前面，最後再放寬鬆的保底規則。
+const TERM_FIXES = [
+  {
+    // 無線電機＝車上的無線電收發機（radio），不是「無線馬達」，
+    // Google 常見誤譯：wireless motor / wireless transceiver / 單純 wireless
+    zh: /無線電機/,
+    zhExclude: /無線(AP|基地台)/,
+    fixes: [
+      { en: /\bwireless\s+motors?\b/gi, to: "radio unit" },
+      { en: /\bwireless\s+transceivers?\b/gi, to: "radio transceiver" },
+      { en: /\bwireless\b/gi, to: "radio" },
+    ],
+  },
+];
+
+function applyTermFixes(zhText, enText) {
+  let out = enText;
+  for (const rule of TERM_FIXES) {
+    if (!rule.zh.test(zhText)) continue;
+    if (rule.zhExclude && rule.zhExclude.test(zhText)) continue;
+    for (const fix of rule.fixes) out = out.replace(fix.en, fix.to);
+  }
+  return out;
+}
 
 export default {
   async fetch(request, env) {
@@ -95,7 +129,8 @@ export default {
     }
 
     const gData = await gRes.json();
-    const translations = ((gData.data && gData.data.translations) || []).map(t => t.translatedText);
+    const translations = ((gData.data && gData.data.translations) || [])
+      .map((t, i) => applyTermFixes(texts[i], t.translatedText));
     if (translations.length !== texts.length) {
       return json({ error: "translation count mismatch" }, 502);
     }
