@@ -562,13 +562,18 @@ function renderCarCell(car) {
     const metaHtml = (showDetail && f.reportedAt)
       ? `<div class="fi-meta">📝 回報 ${fmtDT(f.reportedAt)}${f.reportedBy ? "　" + escH(f.reportedBy) : ""}</div>`
       : "";
+    // 最後編輯時間／人員：每次存檔都更新；跟回報完全相同（從未被編輯過）時不重複顯示
+    const edited = f.editedAt && (f.editedAt !== f.reportedAt || f.editedBy !== f.reportedBy);
+    const editedHtml = (showDetail && edited)
+      ? `<div class="fi-meta">✏️ 最後編輯 ${fmtDT(f.editedAt)}${f.editedBy ? "　" + escH(f.editedBy) : ""}</div>`
+      : "";
     return `<div class="fault-item${itemCls}" id="fi_${car}_${f.id}">
       <select class="fi-select ${cls}" onchange="updateFaultStatus('${car}','${f.id}',this)">${opts}</select>
       ${descHtml}
       ${personHtml}
       ${witnessHtml}
       <button class="fi-del-btn" onclick="removeFault('${car}','${f.id}')" title="刪除此筆">✕</button>
-    </div>${enHtml}${metaHtml}`;
+    </div>${enHtml}${metaHtml}${editedHtml}`;
   }).join("");
 
   // 尚未檢查的車顯示「均完成」快速鍵，一鍵完成清點
@@ -908,6 +913,11 @@ function commitChanges() {
         data[f.id].reportedAt = now;
         data[f.id].reportedBy = editor;
       }
+      // 最後編輯時間／人員：每次有改動的存檔都更新（含第一次存檔本身）
+      f.editedAt = now;
+      f.editedBy = editor;
+      data[f.id].editedAt = now;
+      data[f.id].editedBy = editor;
     });
     faultList[car].filter(f => f._del && !f._new).forEach(f => {
       data[f.id] = firebase.firestore.FieldValue.delete();
@@ -1052,7 +1062,7 @@ function exportBackup() {
       const meta = cloudMeta[car] || {};
       out[car] = { updatedAt: meta.at || "", updatedBy: meta.by || "" };
       savedCloud[car].forEach(f => {
-        out[car][f.id] = { status: f.status, desc: f.desc, person: f.person || "", witness: f.witness || "", reportedAt: f.reportedAt || "", reportedBy: f.reportedBy || "" };
+        out[car][f.id] = { status: f.status, desc: f.desc, person: f.person || "", witness: f.witness || "", reportedAt: f.reportedAt || "", reportedBy: f.reportedBy || "", editedAt: f.editedAt || "", editedBy: f.editedBy || "" };
         count++;
       });
     }
@@ -1197,7 +1207,7 @@ db.collection(FAULT_COLLECTION).onSnapshot(snap => {
     const cloudItems = [];
     Object.entries(data).forEach(([id, val]) => {
       if (id === "updatedAt" || id === "updatedBy" || typeof val !== "object" || val === null) return;
-      cloudItems.push({ id, status: val.status || "待確認", desc: val.desc || "", desc_en: val.desc_en || "", person: val.person || "", witness: val.witness || "", reportedAt: val.reportedAt || "", reportedBy: val.reportedBy || "" });
+      cloudItems.push({ id, status: val.status || "待確認", desc: val.desc || "", desc_en: val.desc_en || "", person: val.person || "", witness: val.witness || "", reportedAt: val.reportedAt || "", reportedBy: val.reportedBy || "", editedAt: val.editedAt || "", editedBy: val.editedBy || "" });
     });
     // 依狀態排序：故障 → 維修中 → 待確認 → 已修復
     cloudItems.sort((a, b) => (STATUS_SORT[a.status] ?? 9) - (STATUS_SORT[b.status] ?? 9));

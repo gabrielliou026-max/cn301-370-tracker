@@ -176,13 +176,19 @@ Collection = faultData   (每個 doc = 一台車，doc id = 車號如 CN301)
   - `updatedBy`：最後儲存人員名字（2026-07-05 新增）
 - 故障項目（map 型態，key 為隨機 id 如 `f1782292280888zls`）：
   `status`, `desc`, `person`(修復人員), `witness`(見證人),
-  `reportedAt`(回報時間，2026-08-26 新增), `reportedBy`(回報人員，2026-08-26 新增)
+  `reportedAt`(回報時間，2026-08-26 新增), `reportedBy`(回報人員，2026-08-26 新增),
+  `editedAt`(最後編輯時間，2026-10-20 新增), `editedBy`(最後編輯人員，2026-10-20 新增)
 
 > **`reportedAt`/`reportedBy`（2026-08-26 新增）**：只在該筆故障**第一次存檔**（前端 `_new`）
 > 時寫入一次，沿用當次存檔選的「更新人員」與存檔當下時間，**之後編輯不會再變動**
 > （`commitChanges()` 對非 `_new` 的編輯不寫這兩個欄位，靠 Firestore merge 保留原值，
 > 跟 `desc_en` 的保留邏輯同一套模式）。舊資料沒有這兩個欄位時網站不顯示，`gen_word_report.py`
 > 不需修改（字串型態自動略過）。
+
+> **`editedAt`/`editedBy`（2026-10-20 新增）**：跟 `reportedAt`/`reportedBy` 不同，
+> **每次有改動的存檔都會更新**（`_new` 或 `_dirty` 都寫），記錄「最後一次是誰、什麼時候
+> 動過這筆故障」。畫面上只在跟回報資訊不同（代表確實被編輯過）時才顯示
+> `✏️ 最後編輯 …`，避免剛新增、還沒被改過的項目重複顯示兩行一樣的時間/人名。
 
 > `gen_word_report.py` 以 `"mapValue" not in fval` 過濾欄位，
 > `updatedAt`/`updatedBy` 均為字串會自動略過，**腳本無需修改**。
