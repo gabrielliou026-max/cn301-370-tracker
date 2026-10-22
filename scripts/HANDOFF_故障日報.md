@@ -3,7 +3,7 @@
 > 這份文件用於把「故障追蹤網站（目前 74G/75G 兩單位，73G 已於 2026-09-11 下架）+ DT&E 故障日報」
 > 維護工作轉移到新的對話框。
 > 貼上或附上此檔給新對話，即可無縫接手。
-> 最後更新：2026-10-20
+> 最後更新：2026-10-22
 
 ---
 
@@ -291,13 +291,17 @@ Python 腳本執行結束印 WARNING、網頁版產報告後跳 alert 提示未�
   （否則會一直卡在舊版本回 401 unauthorized，即使 Settings 顯示 Secret 已存在）
 - 此功能**只用在 index.html（故障系統）**，`domain.html` 介面本身就是英文、不需要
 - 建議另在 Google Cloud Console 設 Billing Budget Alert（低門檻如 1 美元）當第二道保險
-- **專有名詞修正（2026-10-20 新增）**：Google 不懂車輛維修術語，常把「無線電機」逐字
-  翻成 wireless/motor。Worker 裡新增 `TERM_FIXES`，依原文（中文）命中條件對 Google
-  回傳的英文做字詞修正（目前只有「無線電機→radio」這筆，排除「無線AP/無線基地台」
-  避免誤改）。**只對新送去 Google 翻譯的描述生效**，已經存在 Firestore 的舊 `desc_en`
+- **專有名詞修正（2026-10-20 新增，2026-10-22 擴充）**：Google 不懂車輛維修術語，
+  常把「無線電機」逐字翻成 wireless/motor、把「缺」(廠商該給卻沒給) 翻成 missing
+  (語感更像「遺失」)。Worker 裡的 `TERM_FIXES` 依原文（中文）命中條件對 Google
+  回傳的英文做字詞修正：「無線電機→radio」(排除「無線AP/無線基地台」)、
+  「缺→lacking」(排除「缺失」，那是瑕疵/缺陷紀錄表的意思，跟缺少東西無關)。
+  取代邏輯會保留原字首大小寫，句首也不會被換成小寫開頭。
+  `zh_en.json` 裡既有同類詞條也同步手動修正過（12 筆「缺」改用 lacks/lack of）。
+  **只對新送去 Google 翻譯的描述生效**，已經存在 Firestore 的舊 `desc_en`
   不會自動回溯更新——要修正舊資料，使用者需要到網站把該筆故障描述重新存檔一次
   （`updateFaultDesc` 會清掉舊 `desc_en`，存檔後觸發重新翻譯）。未來遇到類似術語
-  誤譯，比照 `TERM_FIXES` 裡這筆的格式加新項目即可，見 `worker/README.md`。
+  誤譯，比照 `TERM_FIXES` 裡既有項目的格式加新項目即可，見 `worker/README.md`。
 
 **版型雙軌同步規則再次提醒**：本次接 desc_en 時發現先前 `gen_word_report.py`
 的多單位改版（GROUPS_BY_UNIT / 日期列加「作業單位」字樣 / 74G75G 標題改「全部車輛」）

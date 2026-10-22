@@ -60,6 +60,15 @@ const TERM_FIXES = [
       { en: /\bwireless\b/gi, to: "radio" },
     ],
   },
+  {
+    // 缺＝東西沒附、缺少（通常是廠商該給卻沒給），語感上該用 lacking，
+    // 不是 missing（Google 常見誤譯）。排除「缺失」（瑕疵/缺陷紀錄表，不同意思）
+    zh: /缺/,
+    zhExclude: /缺失/,
+    fixes: [
+      { en: /\bmissing\b/gi, to: "lacking" },
+    ],
+  },
 ];
 
 function applyTermFixes(zhText, enText) {
@@ -67,7 +76,12 @@ function applyTermFixes(zhText, enText) {
   for (const rule of TERM_FIXES) {
     if (!rule.zh.test(zhText)) continue;
     if (rule.zhExclude && rule.zhExclude.test(zhText)) continue;
-    for (const fix of rule.fixes) out = out.replace(fix.en, fix.to);
+    for (const fix of rule.fixes) {
+      out = out.replace(fix.en, matched =>
+        // 保留原字首大小寫（句首常是大寫），避免 "Missing..." 被換成小寫開頭的句子
+        /^[A-Z]/.test(matched) ? fix.to[0].toUpperCase() + fix.to.slice(1) : fix.to
+      );
+    }
   }
   return out;
 }
