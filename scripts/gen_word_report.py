@@ -57,7 +57,7 @@ STATUS_ORDER = {"均完成":-1,"已修復完成":0,"故障":1,"維修中":2,"待
 STATUS_ZH_EN = {
     "均完成":    ("均完成",   "All Clear"),
     "故障":      ("故障",     "Fault"),
-    "已修復完成": ("已修復完成","Fixed"),
+    "已修復完成": ("已修復完成","Closed"),
     "維修中":    ("維修中",    "Under Repair"),
     "待確認":    ("待確認",    "Pending"),
 }
@@ -243,7 +243,7 @@ def build_doc(fault_data, active_only=False):
             ("總車數\nTotal Cars",          str(TOTAL_CARS), "2C3E50"),
             ("有紀錄車廂\nCars w/ Records", str(total_cars), "1A2332"),
             ("故障\nFault",                 str(cnt_fault),  "C00000"),
-            ("已修復完成\nFixed",            str(cnt_fixed),  "0E7490"),
+            ("已修復完成\nClosed",            str(cnt_fixed),  "0E7490"),
             ("維修中\nUnder Repair",        str(cnt_wip),    "7B3F00"),
             ("待確認\nPending",             str(cnt_pend),   "1F497D"),
         ]
