@@ -12,7 +12,7 @@ BASE_URL   = f"https://firestore.googleapis.com/v1/projects/{PROJECT_ID}/databas
 PDF_PATH   = "/root/.claude/uploads/601937c1-2176-5d8c-aa25-0c267b631065/c30a0709-_____20260702.pdf"
 
 STATUS_ORDER = {"已修復完成":0,"故障":1,"維修中":2,"待確認":3}
-STATUS_EN    = {"已修復完成":"Fixed","故障":"Fault","維修中":"Under Repair","待確認":"Pending"}
+STATUS_EN    = {"已修復完成":"Closed","故障":"Fault","維修中":"Under Repair","待確認":"Pending"}
 
 # ── Fetch current Firestore data ──────────────────────────────────────────────
 def fetch_all():
@@ -131,7 +131,7 @@ def main():
     print(f"Count deltas (positive = new since PDF):")
     print(f"  Total items : {sign(delta_total)}")
     print(f"  故障 Fault  : {sign(delta_fault)}")
-    print(f"  已修復 Fixed: {sign(delta_fixed)}")
+    print(f"  已修復 Closed: {sign(delta_fixed)}")
     print(f"  維修中 WIP  : {sign(delta_wip)}")
     print(f"  待確認 Pend : {sign(delta_pend)}")
 

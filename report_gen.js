@@ -12,7 +12,7 @@
   const RG_STATUS_ZH_EN = {
     "均完成":     ["均完成", "All Clear"],
     "故障":       ["故障", "Fault"],
-    "已修復完成": ["已修復完成", "Fixed"],
+    "已修復完成": ["已修復完成", "Closed"],
     "維修中":     ["維修中", "Under Repair"],
     "待確認":     ["待確認", "Pending"],
   };
@@ -122,7 +122,7 @@
       ["總車數\nTotal Cars",          String(TOTAL_CARS),       "2C3E50"],
       ["有紀錄車廂\nCars w/ Records", String(totalCars),        "1A2332"],
       ["故障\nFault",                 String(count("故障")),     "C00000"],
-      ["已修復完成\nFixed",            String(count("已修復完成")), "0E7490"],
+      ["已修復完成\nClosed",            String(count("已修復完成")), "0E7490"],
       ["維修中\nUnder Repair",        String(count("維修中")),   "7B3F00"],
       ["待確認\nPending",             String(count("待確認")),   "1F497D"],
     ];
