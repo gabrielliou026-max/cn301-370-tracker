@@ -855,7 +855,42 @@ function onEditorSelect(sel) {
   if (sel.value === "__other__") setTimeout(() => other.focus(), 0);
 }
 
+// 「修復人員」欄常被誤填成故障內容（手機版是一整條全寬輸入框，看起來像主要輸入區）。
+// 判斷條件刻意偏寬鬆：只是跳提示讓使用者確認，不會自動搬移，誤判的代價只是多按一次取消。
+// 名單裡的名字（如 "Tim. Y"）直接放行；ASCII 句點不算可疑，避免誤判這類名字。
+function looksLikeDescription(s) {
+  const t = (s || "").trim();
+  if (!t || WITNESS_NAMES.includes(t)) return false;
+  if (/[\n，。、；：！？（）,;:!?()]/.test(t)) return true;
+  if (/\d/.test(t)) return true;
+  if ((t.match(/[一-鿿]/g) || []).length > 8) return true;
+  return t.length > 20;
+}
+
+function checkMisplacedPerson() {
+  cars.forEach(car => {
+    faultList[car]
+      .filter(f => !f._del && !f._default && (f._new || f._dirty) && looksLikeDescription(f.person))
+      .forEach(f => {
+        const text = f.person.trim();
+        const shown = text.length > 60 ? text.slice(0, 60) + "…" : text;
+        const move = confirm(
+          `${car} 這筆的「修復人員」欄填了：\n\n「${shown}」\n\n` +
+          `看起來像故障描述，要移到「故障描述」欄嗎？（取消＝保留原樣）\n\n` +
+          `This looks like a fault description typed into "Repaired by". Move it to the description field?`
+        );
+        if (!move) return;
+        f.desc = f.desc && f.desc.trim() ? `${f.desc}\n${text}` : text;
+        f.person = "";
+        delete f.desc_en;
+        if (!f._new) f._dirty = true;
+        renderCarCell(car);
+      });
+  });
+}
+
 function openSaveConfirm() {
+  checkMisplacedPerson();
   document.getElementById("modalCount").textContent = countPending();
   // 帶入上次選擇/輸入的名字（記在此裝置瀏覽器）
   const stored = localStorage.getItem("editorName") || "";
