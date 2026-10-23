@@ -481,12 +481,13 @@ const NAME_ALIASES = {
   "陳枚方": "陳玫方", "明豪": "孫明豪", "Fu": "Daniel",
   "千芸": "邱千芸", "文德": "王文德", "名凱": "謝名凱", "志明": "余志明",
   "郁智": "蘇郁智", "哲弘": "伍哲弘", "進益": "林進益", "顏吉": "謝顏吉",
+  "淑茹": "張淑茹", "中士楊晉權": "楊晉權",
 };
 function normName(s) {
   const t = (s || "").trim();
   return NAME_ALIASES[t] || s;
 }
-const WITNESS_NAMES = ["Daniel","Danny","Gabriel","Joey","Nessa","Peter","Tim. Y","Vicky","Victoria","王文德","林郁恩","邱千芸","侯政廷","柯冠宇","翁浚銘","淑茹","許定禾","陳仕軒","陶玉龍","黃龍慶","楊政輯","劉軒宏","謝名凱","龔育仁"];
+const WITNESS_NAMES = ["Daniel","Danny","Gabriel","Joey","Nessa","Peter","Tim. Y","Vicky","Victoria","王文德","林郁恩","邱千芸","侯政廷","柯冠宇","翁浚銘","張淑茹","許定禾","陳仕軒","陶玉龍","黃龍慶","楊政輯","劉軒宏","謝名凱","龔育仁"];
 
 function makeId() { return "f" + Date.now().toString(36) + Math.random().toString(36).slice(2,5); }
 
