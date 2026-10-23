@@ -457,5 +457,7 @@
   "DK光纖過不去！": "DK fiber link not getting through",
   "桌面RJ3孔位損壞、247.249沒組態、時間沒有指向": "Desktop RJ3 port damaged; 247/249 not configured; time not synchronized",
   "Poe損毀，245無線電機損壞": "PoE damaged; 245 radio unit damaged",
-  "Ac main power指示燈損壞，30米的頭皆無防塵蓋": "AC main power indicator light damaged; 30m cable ends all lack dust caps"
+  "Ac main power指示燈損壞，30米的頭皆無防塵蓋": "AC main power indicator light damaged; 30m cable ends all lack dust caps",
+  "Server指向": "Server pointing issue",
+  "OPR筆電無法觸控": "OPR laptop touchscreen not working"
 }
