@@ -470,7 +470,23 @@ const STATUS_CLS = Object.fromEntries(STATUS_OPTS.map(o => [o.value, o.cls]));
 // 雲端項目顯示排序：故障 → 維修中 → 待確認 → 已修復 → 均完成
 const STATUS_SORT = { "故障": 0, "維修中": 1, "待確認": 2, "已修復完成": 3, "均完成": 4 };
 
-const WITNESS_NAMES = ["Gabriel","Song","Vicky","Danny","Tony","Peter","Tracy","Joey","Nessa","Jerome","Tim. Y","Mike. C","Ponjus","Arthur","Victoria","Kent","Sandy"];
+// 兩份名單依 2026-10-23 實際使用統計整理：英文依字母、中文依筆畫排序，一律用全名。
+// 不在名單上的人選「其他」手打即可；調整名單時注意寫法要跟資料庫裡既有紀錄一致。
+const REPORTER_NAMES = ["Daniel","Joey","Nessa","Tim. Y","Tracy","Vicky","Victoria","王文德","伍哲弘","余志明","林郁恩","林進益","邱千芸","侯政廷","柯冠宇","孫明豪","徐郁勝","翁浚銘","許定禾","陳仕軒","陳玫方","陶玉龍","黃龍慶","楊政輯","劉軒宏","鄭勝聰","蕭冠維","謝名凱","謝顏吉","蘇郁智","龔育仁"];
+// 舊簡寫／別名 → 統一全名（2026-10-23 已將資料庫舊紀錄全部改成全名）。
+// 存檔時套用，避免裝置記住的舊名字或習慣手打的簡寫讓寫法又分歧；只比對整格完全相同
+const NAME_ALIASES = {
+  "龍慶": "黃龍慶", "政輯": "楊政輯", "玉龍": "陶玉龍", "仕軒": "陳仕軒", "郁勝": "徐郁勝",
+  "郁恩": "林郁恩", "政廷": "侯政廷", "上士龔育仁": "龔育仁", "育仁": "龔育仁",
+  "陳枚方": "陳玫方", "明豪": "孫明豪", "Fu": "Daniel",
+  "千芸": "邱千芸", "文德": "王文德", "名凱": "謝名凱", "志明": "余志明",
+  "郁智": "蘇郁智", "哲弘": "伍哲弘", "進益": "林進益", "顏吉": "謝顏吉",
+};
+function normName(s) {
+  const t = (s || "").trim();
+  return NAME_ALIASES[t] || s;
+}
+const WITNESS_NAMES = ["Daniel","Danny","Gabriel","Joey","Nessa","Peter","Tim. Y","Vicky","Victoria","王文德","林郁恩","邱千芸","侯政廷","柯冠宇","翁浚銘","淑茹","許定禾","陳仕軒","陶玉龍","黃龍慶","楊政輯","劉軒宏","謝名凱","龔育仁"];
 
 function makeId() { return "f" + Date.now().toString(36) + Math.random().toString(36).slice(2,5); }
 
@@ -861,7 +877,7 @@ function onEditorSelect(sel) {
 // 名單裡的名字（如 "Tim. Y"）直接放行；ASCII 句點不算可疑，避免誤判這類名字。
 function looksLikeDescription(s) {
   const t = (s || "").trim();
-  if (!t || WITNESS_NAMES.includes(t)) return false;
+  if (!t || WITNESS_NAMES.includes(t) || REPORTER_NAMES.includes(t)) return false;
   if (/[\n，。、；：！？（）,;:!?()]/.test(t)) return true;
   if (/\d/.test(t)) return true;
   if ((t.match(/[一-鿿]/g) || []).length > 8) return true;
@@ -894,10 +910,10 @@ function openSaveConfirm() {
   checkMisplacedPerson();
   document.getElementById("modalCount").textContent = countPending();
   // 帶入上次選擇/輸入的名字（記在此裝置瀏覽器）
-  const stored = localStorage.getItem("editorName") || "";
+  const stored = normName(localStorage.getItem("editorName") || "");
   const sel = document.getElementById("editorSelect");
   const other = document.getElementById("editorOther");
-  if (stored && WITNESS_NAMES.includes(stored)) {
+  if (stored && REPORTER_NAMES.includes(stored)) {
     sel.value = stored;
     other.style.display = "none";
   } else if (stored) {
@@ -913,7 +929,7 @@ function commitChanges() {
   // 更新人員必填，才知道是誰在什麼時間改的
   const sel = document.getElementById("editorSelect");
   const other = document.getElementById("editorOther");
-  const editor = sel.value === "__other__" ? other.value.trim() : sel.value;
+  const editor = normName(sel.value === "__other__" ? other.value.trim() : sel.value);
   if (!editor) {
     const target = sel.value === "__other__" ? other : sel;
     target.classList.add("input-error");
@@ -937,6 +953,8 @@ function commitChanges() {
     // 只寫入「有改動」的項目（_new 或 _dirty）；未改動的項目不送，
     // 靠 merge:true 保留雲端版本，避免蓋掉別人同時修改的其他項目
     faultList[car].filter(f => !f._del && !f._default && (f._new || f._dirty)).forEach(f => {
+      f.person = normName(f.person);
+      f.witness = normName(f.witness);
       data[f.id] = { status: f.status, desc: f.desc, person: f.person || "", witness: f.witness || "" };
       // 描述變更後 desc_en 已在 updateFaultDesc 清除；若本機沒有翻譯結果，
       // 一併清掉雲端舊值（Firestore merge 對巢狀欄位可用刪除標記），
@@ -1186,7 +1204,7 @@ function updateFooterUpdated() {
 // 更新人員下拉選單：名單＋明確的「其他」自訂選項
 document.getElementById("editorSelect").innerHTML =
   `<option value="">— 請選擇人員 Select name —</option>` +
-  WITNESS_NAMES.map(n => `<option value="${escH(n)}">${escH(n)}</option>`).join("") +
+  REPORTER_NAMES.map(n => `<option value="${escH(n)}">${escH(n)}</option>`).join("") +
   `<option value="__other__">✏️ 其他 Other…（自行輸入 Type a name）</option>`;
 
 // ── 有未儲存變更時，離開頁面前警告 ──
