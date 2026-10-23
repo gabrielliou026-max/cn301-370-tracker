@@ -171,14 +171,22 @@
     padding: 0 6px 4px; line-height: 1.4;
   }
 
+  .fi-person-wrap { flex-shrink: 0; display: flex; gap: 4px; margin-top: 2px; }
   .fi-person {
     flex-shrink: 0; width: 110px;
     border: 1px solid #e2e8f0; border-radius: 8px;
-    padding: 3px 8px; font-size: 0.72rem; font-family: inherit;
-    color: #1a2332; background: #f8fafc; outline: none; margin-top: 2px;
+    padding: 3px 6px; font-size: 0.72rem; font-family: inherit;
+    color: #1a2332; background: #f8fafc; outline: none; cursor: pointer;
   }
   .fi-person:focus { border-color: #2d4a8a; background: white; }
-  .fi-person::placeholder { color: #cbd5e1; }
+  .fi-person-other {
+    flex-shrink: 0; width: 90px;
+    border: 1px solid #e2e8f0; border-radius: 8px;
+    padding: 3px 8px; font-size: 0.72rem; font-family: inherit;
+    color: #1a2332; background: #f8fafc; outline: none;
+  }
+  .fi-person-other:focus { border-color: #2d4a8a; background: white; }
+  .fi-person-other::placeholder { color: #cbd5e1; }
 
   .fi-witness-wrap { flex-shrink: 0; display: flex; gap: 4px; margin-top: 2px; }
   .fi-witness {
@@ -319,10 +327,12 @@
     .fi-select { order: 1; max-width: calc(100% - 44px); font-size: 16px; }
     .fi-del-btn { order: 2; margin-left: auto; font-size: 1.15rem; padding: 4px 8px; }
     .fi-desc { order: 3; flex-basis: 100%; font-size: 16px; }
-    .fi-person { order: 4; width: 100%; padding: 8px 10px; font-size: 16px; }
+    .fi-person-wrap { order: 4; width: 100%; }
+    .fi-person { flex: 1; width: auto; min-width: 0; padding: 8px 10px; font-size: 16px; }
+    .fi-person-other { flex: 1; width: auto; min-width: 0; padding: 8px 10px; font-size: 16px; }
     .fi-witness-wrap { order: 5; width: 100%; }
-    .fi-witness { flex: 1; width: auto; padding: 8px 10px; font-size: 16px; }
-    .fi-witness-other { flex: 1; width: auto; padding: 8px 10px; font-size: 16px; }
+    .fi-witness { flex: 1; width: auto; min-width: 0; padding: 8px 10px; font-size: 16px; }
+    .fi-witness-other { flex: 1; width: auto; min-width: 0; padding: 8px 10px; font-size: 16px; }
     .quick-btns { flex-wrap: wrap; }
     .add-fault-btn { padding: 8px 14px; font-size: 0.85rem; }
     .allclear-btn { padding: 8px 16px; font-size: 0.85rem; }
@@ -482,7 +492,10 @@ const NAME_ALIASES = {
   "千芸": "邱千芸", "文德": "王文德", "名凱": "謝名凱", "志明": "余志明",
   "郁智": "蘇郁智", "哲弘": "伍哲弘", "進益": "林進益", "顏吉": "謝顏吉",
   "淑茹": "張淑茹", "中士楊晉權": "楊晉權",
+  "EMMA": "Emma", "Emma學姊": "Emma", "Emma姐": "Emma", "Tim K": "Tim",
 };
+// 修復人員（多為美方/廠商技師）
+const REPAIR_NAMES = ["Emma","Jean","Kenny","Mark","Mason","Ryan","Tim"];
 function normName(s) {
   const t = (s || "").trim();
   return NAME_ALIASES[t] || s;
@@ -550,10 +563,22 @@ function renderCarCell(car) {
                    placeholder="故障描述… Fault description"
                    oninput="updateFaultDesc('${car}','${f.id}',this.value);autoResize(this)">${escH(f.desc)}</textarea>`
       : "";
+    // 修復人員：下拉選名單，名單外的人選「其他」手打（跟見證人同一套做法）
+    const isOtherPerson = f.person && !REPAIR_NAMES.includes(f.person);
+    const showPersonOther = f._personOther || isOtherPerson;
     const personHtml = showDetail
-      ? `<input class="fi-person" type="text" value="${escH(f.person || '')}"
-                placeholder="🙋 修復人員 Repaired by"
-                oninput="updateFaultPerson('${car}','${f.id}',this.value)">`
+      ? `<div class="fi-person-wrap">
+          <select class="fi-person" onchange="updateFaultPersonSelect('${car}','${f.id}',this)">
+            <option value="">🙋 修復人員 Repaired by</option>
+            ${REPAIR_NAMES.map(n => `<option value="${escH(n)}"${f.person===n?" selected":""}>${escH(n)}</option>`).join("")}
+            <option value="__other__"${showPersonOther?" selected":""}>其他 Other…</option>
+          </select>
+          ${showPersonOther
+            ? `<input class="fi-person-other" type="text" value="${escH(isOtherPerson ? f.person : '')}"
+                      placeholder="姓名 Name"
+                      oninput="updateFaultPerson('${car}','${f.id}',this.value)">`
+            : ""}
+        </div>`
       : "";
     // 已修復完成 才顯示見證人欄位
     const isOtherWitness = f.witness && !WITNESS_NAMES.includes(f.witness);
@@ -798,6 +823,25 @@ function updateFaultPerson(car, id, val) {
   updateSaveBar();
 }
 
+function updateFaultPersonSelect(car, id, sel) {
+  const f = faultList[car].find(f => f.id === id);
+  if (!f) return;
+  if (sel.value === "__other__") {
+    f._personOther = true;
+    // 從名單切到「其他」：清掉原本選的名字（也是資料變更，updateFaultPerson 會標記 dirty）
+    if (REPAIR_NAMES.includes(f.person)) updateFaultPerson(car, id, "");
+    renderCarCell(car);
+    setTimeout(() => {
+      const inp = document.querySelector(`#fi_${car}_${id} .fi-person-other`);
+      if (inp) inp.focus();
+    }, 0);
+  } else {
+    f._personOther = false;
+    updateFaultPerson(car, id, sel.value);
+    renderCarCell(car);
+  }
+}
+
 function updateFaultWitnessSelect(car, id, sel) {
   const f = faultList[car].find(f => f.id === id);
   if (!f) return;
@@ -878,7 +922,7 @@ function onEditorSelect(sel) {
 // 名單裡的名字（如 "Tim. Y"）直接放行；ASCII 句點不算可疑，避免誤判這類名字。
 function looksLikeDescription(s) {
   const t = (s || "").trim();
-  if (!t || WITNESS_NAMES.includes(t) || REPORTER_NAMES.includes(t)) return false;
+  if (!t || WITNESS_NAMES.includes(t) || REPORTER_NAMES.includes(t) || REPAIR_NAMES.includes(t)) return false;
   if (/[\n，。、；：！？（）,;:!?()]/.test(t)) return true;
   if (/\d/.test(t)) return true;
   if ((t.match(/[一-鿿]/g) || []).length > 8) return true;
