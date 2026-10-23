@@ -452,5 +452,10 @@
   "車頂置物箱MAPS位置未切割": "Rooftop storage box MAPS position not cut out",
   "DC電無法通過，無法升桿": "DC power cannot pass through; mast cannot elevate",
   "TVAM第四節桿身有明顯刮痕，升桿聲音較爲尖銳": "TVAM mast section 4 shows noticeable scratches; elevation noise sharper than normal",
-  "伺服器均有設定，ping得到vlan130，但ping不到vlan105": "Servers configured correctly; VLAN 130 pingable but VLAN 105 not pingable"
+  "伺服器均有設定，ping得到vlan130，但ping不到vlan105": "Servers configured correctly; VLAN 130 pingable but VLAN 105 not pingable",
+  "兩台電腦無法登入席位帳號、沒有指向NMS": "Two computers cannot log in to position accounts; not pointing to NMS",
+  "DK光纖過不去！": "DK fiber link not getting through",
+  "桌面RJ3孔位損壞、247.249沒組態、時間沒有指向": "Desktop RJ3 port damaged; 247/249 not configured; time not synchronized",
+  "Poe損毀，245無線電機損壞": "PoE damaged; 245 radio unit damaged",
+  "Ac main power指示燈損壞，30米的頭皆無防塵蓋": "AC main power indicator light damaged; 30m cable ends all lack dust caps"
 }
