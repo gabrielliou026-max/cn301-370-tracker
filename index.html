@@ -68,7 +68,7 @@
   .unit-tabs a:hover { border-color: #2d4a8a; color: #2d4a8a; }
   .unit-tabs a.active { background: #1a2f5e; color: white; border-color: #1a2f5e; }
 
-  /* 操課前檢查／DT&E 檢查切換（僅 74G/75G 顯示）：跟單位頁籤同風格，換一個強調色區分 */
+  /* 操課前檢查／DT&E 檢查切換（74G/75G/STC 顯示）：跟單位頁籤同風格，換一個強調色區分 */
   .phase-tabs { padding-top: 0; border-bottom: 1px solid #dde3ed; }
   .phase-tabs a.active { background: #0e7490; border-color: #0e7490; }
 
@@ -356,6 +356,7 @@
 <nav class="unit-tabs">
   <a href="?unit=74G" data-unit="74G">74G</a>
   <a href="?unit=75G" data-unit="75G">75G</a>
+  <a href="?unit=STC" data-unit="STC">STC</a>
 </nav>
 
 <nav class="unit-tabs phase-tabs" id="phaseTabs" style="display:none">
@@ -437,7 +438,7 @@
 <script>
 // ── 單位設定 ──
 // 共用同一個 faultData collection（doc id = 車號），車號範圍互不重疊
-// （74G: 501-546/NMS58x, 75G: 401-446/NMS48x），因此無需修改 Firestore 規則即可隔離。
+// （74G: 501-546/NMS58x, 75G: 401-446/NMS48x, STC: 371-378/384），因此無需修改 Firestore 規則即可隔離。
 // 新增單位時務必確認車號不與現有單位重複。
 // 2026-09-11：73G（CN301-370）已下架，不再提供頁籤／網址存取；
 // 舊資料仍完整保留在 faultData collection，未刪除，Python 日報腳本仍可正常產出。
@@ -451,6 +452,10 @@ const UNITS = {
     title: "CN401-446 故障追蹤系統",
     cars: ["NMS481","NMS482", ...carRange(401, 414), ...carRange(419, 431), ...carRange(436, 446)],  // 40
   },
+  "STC": {
+    title: "STC 故障追蹤系統",
+    cars: ["CN373","CN374","CN375","CN377","CN371","CN372","CN376","CN378","CN384"],  // 9，順序依使用者提供
+  },
 };
 const UNIT_ID = (() => {
   const u = new URLSearchParams(location.search).get("unit") || "74G";
@@ -460,8 +465,8 @@ const UNIT = UNITS[UNIT_ID];
 const cars = UNIT.cars;
 const TOTAL = cars.length;
 
-// 操課前檢查／DT&E 檢查：目前僅 74G/75G 有「DT&E 檢查」紀錄
-const PHASE_UNITS = new Set(["74G", "75G"]);
+// 操課前檢查／DT&E 檢查：74G/75G/STC 有「DT&E 檢查」紀錄
+const PHASE_UNITS = new Set(["74G", "75G", "STC"]);
 const PHASE = (() => {
   if (!PHASE_UNITS.has(UNIT_ID)) return "before";
   return new URLSearchParams(location.search).get("phase") === "after" ? "after" : "before";
@@ -1143,7 +1148,7 @@ document.getElementById("statTotal").textContent = TOTAL;
 document.querySelectorAll(".unit-tabs:not(.phase-tabs) a").forEach(a =>
   a.classList.toggle("active", a.dataset.unit === UNIT_ID));
 
-// 操課前檢查／DT&E 檢查切換頁籤：僅 74G/75G 顯示，連結帶入目前單位、切換 phase 參數
+// 操課前檢查／DT&E 檢查切換頁籤：74G/75G/STC 顯示，連結帶入目前單位、切換 phase 參數
 if (PHASE_UNITS.has(UNIT_ID)) {
   document.getElementById("phaseTabs").style.display = "";
   document.getElementById("phaseBeforeLink").href = `?unit=${UNIT_ID}`;

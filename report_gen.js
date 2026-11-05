@@ -96,7 +96,7 @@
   }
 
   // ── document.xml 組裝（對應 build_doc(active_only=False)）──
-  const UNIT_TITLES = { "73G": "CN301-370", "74G": "CN501-546", "75G": "CN401-446" };
+  const UNIT_TITLES = { "73G": "CN301-370", "74G": "CN501-546", "75G": "CN401-446", "STC": "CN371-378/CN384" };
 
   function buildDocumentXml(rotations, faultData, zhEn, today, unitId, phase = "before") {
     const parts = [PREFIX];
