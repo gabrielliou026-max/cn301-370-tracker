@@ -23,7 +23,7 @@ SCRATCHPAD = os.environ.get("REPORT_OUT_DIR", os.path.dirname(os.path.abspath(__
 
 # ── 單位設定 ──────────────────────────────────────────────────────────────────
 # 三單位共用同一個 faultData collection（doc id = 車號），車號範圍互不重疊
-# （73G: 301-370/NMS38x, 74G: 501-546/NMS58x, 75G: 401-446/NMS48x），對應 index.html 的 UNITS 設定。
+# （73G: 301-370/NMS38x, 74G: 501-546/NMS58x, 75G: 401-446/NMS48x, STC: 371-378/384），對應 index.html 的 UNITS 設定。
 def car_range(a, b):
     return [f"CN{n}" for n in range(a, b + 1)]
 
@@ -42,8 +42,11 @@ GROUPS_BY_UNIT = {
     "75G": [
         ("全部車輛 All Cars", ["NMS481","NMS482", *car_range(401,414), *car_range(419,431), *car_range(436,446)]),
     ],
+    "STC": [
+        ("全部車輛 All Cars", ["CN373","CN374","CN375","CN377","CN371","CN372","CN376","CN378","CN384"]),
+    ],
 }
-UNIT_TITLES = {"73G": "CN301-370", "74G": "CN501-546", "75G": "CN401-446"}
+UNIT_TITLES = {"73G": "CN301-370", "74G": "CN501-546", "75G": "CN401-446", "STC": "CN371-378/CN384"}
 
 # 選擇要產製的單位：環境變數 REPORT_UNIT 覆寫，預設 73G（維持既有行為）
 UNIT = os.environ.get("REPORT_UNIT", "73G")
